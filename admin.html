@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>온밤 — 승인 데스크</title>
+<style>
+:root{--bg:#0B1226;--bg2:#0E1630;--plate:#171E33;--plate2:#1C243C;--hair:#2A3450;
+--gold:#D9A441;--gold2:#E8B54D;--txt:#C9D2E8;--dim:#7C88A8;--faint:#56617E;
+--good:#6FCF97;--bad:#EB7A7A;--neu:#8FA3C7;--mono:ui-monospace,Menlo,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--txt);
+font-family:-apple-system,"Apple SD Gothic Neo",sans-serif;min-height:100vh;padding:0 16px 80px}
+.wrap{max-width:760px;margin:0 auto}
+header{display:flex;align-items:baseline;gap:10px;padding:26px 0 6px}
+h1{font-size:22px;color:var(--gold2);margin:0;letter-spacing:.06em}
+.sub{font-size:12px;color:var(--dim)}
+.panel{background:var(--plate);border:1px solid var(--hair);border-radius:14px;padding:16px;margin:12px 0}
+.hint{font-size:12px;color:var(--dim);line-height:1.8;margin:6px 0}
+input[type=password],input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var(--hair);
+background:var(--bg);color:var(--txt);font-size:14px}
+button{border:1px solid var(--hair);background:var(--plate2);color:var(--txt);border-radius:10px;
+padding:10px 16px;font-size:14px;cursor:pointer}
+button.primary{border-color:var(--gold);color:var(--gold2)}
+button:disabled{opacity:.4;cursor:default}
+.stats{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.stat{background:var(--plate2);border:1px solid var(--hair);border-radius:12px;padding:8px 14px;font-size:12px;color:var(--dim)}
+.stat b{color:var(--gold2);font-size:16px;margin-right:4px}
+.card{background:var(--plate);border:1px solid var(--hair);border-radius:14px;padding:14px;margin:10px 0}
+.card.decided-승인{border-color:var(--good)}
+.card.decided-반려{border-color:var(--bad);opacity:.75}
+.chiprow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.chip{font-size:11px;padding:2px 10px;border-radius:12px;border:1px solid var(--hair);color:var(--dim)}
+.chip.t-별칭{border-color:var(--neu);color:var(--neu)}
+.chip.t-rule{border-color:var(--gold);color:var(--gold2)}
+.chip.t-골든셋{border-color:var(--good);color:var(--good)}
+.chip.t-갈림{border-color:var(--bad);color:var(--bad)}
+.chip.t-QA{border-color:#B48FD9;color:#C9A8E8}
+.body{font-size:14px;line-height:1.75}
+.src{font-size:11.5px;color:var(--dim);margin-top:6px;font-family:var(--mono)}
+.btns{display:flex;gap:8px;margin-top:12px}
+.btns button{flex:1;padding:12px 0}
+.btns .ok.on{background:rgba(111,207,151,.15);border-color:var(--good);color:var(--good)}
+.btns .no.on{background:rgba(235,122,122,.12);border-color:var(--bad);color:var(--bad)}
+.savebar{position:fixed;left:0;right:0;bottom:0;background:rgba(14,22,46,.95);backdrop-filter:blur(8px);
+border-top:1px solid var(--hair);padding:12px 16px;display:none}
+.savebar.show{display:block}
+.savebar .in{max-width:760px;margin:0 auto;display:flex;gap:10px;align-items:center}
+.savebar .n{font-size:13px;color:var(--dim);flex:1}
+.day{font-size:12px;color:var(--faint);margin:18px 0 4px;letter-spacing:.1em}
+.empty{text-align:center;color:var(--dim);padding:40px 0;font-size:14px}
+.topbar{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin:4px 0}
+.topbar button{padding:6px 12px;font-size:12px}
+a{color:var(--gold2)}
+.err{color:var(--bad);font-size:13px;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><h1>온밤 승인 데스크</h1><span class="sub" id="sub">제안 큐 검수</span></header>
+
+<div id="gate" class="panel" hidden>
+  <p class="hint"><b>운영자 전용.</b> 프라이빗 저장소의 제안 큐를 불러오려면 GitHub 토큰이 필요합니다.
+  토큰은 이 브라우저(localStorage)에만 저장되고 GitHub API 외 어디로도 전송되지 않습니다.</p>
+  <p class="hint">발급: GitHub → Settings → Developer settings → <b>Fine-grained tokens</b> →
+  Repository access: <b>harness-onbam만</b> → Permissions: <b>Contents Read and write</b>.</p>
+  <input type="password" id="pat" placeholder="github_pat_…" autocomplete="off">
+  <div class="btns"><button class="primary" id="login">연결</button></div>
+  <p class="err" id="gate-err"></p>
+</div>
+
+<div id="app" hidden>
+  <div class="topbar"><button id="reload">새로고침</button><button id="logout">토큰 삭제</button></div>
+  <div class="stats" id="stats"></div>
+  <div id="list"></div>
+</div>
+</div>
+
+<div class="savebar" id="savebar"><div class="in">
+  <span class="n" id="save-n"></span>
+  <button class="primary" id="save">결정 저장</button>
+</div></div>
+
+<script>
+"use strict";
+const OWNER="LoveEvaLee", REPO="harness-onbam", BR="master";
+const API=`https://api.github.com/repos/${OWNER}/${REPO}/contents/`;
+const $=id=>document.getElementById(id);
+const pat=()=>{try{return localStorage.getItem("onbam.admin.pat")||""}catch(e){return ""}};
+const hdr=()=>({Authorization:"Bearer "+pat(),Accept:"application/vnd.github+json"});
+const b64d=s=>new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\n/g,"")),c=>c.charCodeAt(0)));
+const b64e=s=>{const b=new TextEncoder().encode(s);let o="";b.forEach(c=>o+=String.fromCharCode(c));return btoa(o);};
+const djb2=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h*33)^s.charCodeAt(i))>>>0;return h.toString(36);};
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+let CANDS=[], DEC={}, DECSHA=null, PENDING={};
+
+async function gh(path,opt){const r=await fetch(API+path+(path.includes("?")?"&":"?")+"ref="+BR,{headers:hdr(),...opt});
+  if(r.status===404)return null;
+  if(!r.ok)throw new Error("GitHub "+r.status+(r.status===401?" — 토큰이 유효하지 않아요":r.status===403?" — 권한 부족(Contents RW·harness-onbam 확인)":""));
+  return r.json();}
+
+async function loadAll(){
+  $("stats").innerHTML='<span class="stat">불러오는 중…</span>';
+  const dirs=await gh("kb/_data/proposals");
+  if(!dirs)throw new Error("proposals 폴더를 찾을 수 없어요");
+  const files=dirs.filter(f=>/^\d{4}-\d{2}-\d{2}\.json$/.test(f.name)).sort((a,b)=>b.name.localeCompare(a.name)).slice(0,14);
+  CANDS=[];
+  for(const f of files){
+    const j=await gh("kb/_data/proposals/"+f.name); if(!j)continue;
+    let d; try{d=JSON.parse(b64d(j.content));}catch(e){continue;}
+    const date=f.name.slice(0,10);
+    const push=(type,obj,main,src)=>CANDS.push({id:date+"#"+type+"#"+djb2(JSON.stringify(obj)),date,type,main,src,raw:obj});
+    (d.alias_candidates||[]).forEach(o=>push("별칭",o,`<b>${esc(o.concept_id)}</b> ← “${esc(o.표현)}”`,o.근거_제목));
+    (d.rule_candidates||[]).forEach(o=>push("rule",o,`<b>${esc(o.주제)}</b> — 조건: ${esc(o.조건)} · 방향 추정: ${esc(o.방향_추정)}`,o.근거_제목));
+    (d.goldenset_candidates||[]).forEach(o=>push("골든셋",o,esc(o.요약),o.근거_제목));
+    (d["갈림_감지"]||[]).forEach(o=>push("갈림",o,`<b>${esc(o.주제)}</b> — ${esc(o["서로 다른 해석"])}`,""));
+  }
+  const dj=await gh("kb/_data/approvals/decisions.json");
+  DEC={}; DECSHA=null;
+  if(dj){DECSHA=dj.sha; try{for(const d of JSON.parse(b64d(dj.content)).decisions||[])DEC[d.id]=d;}catch(e){}}
+  PENDING={};
+  render();
+}
+
+function render(){
+  const undecided=CANDS.filter(c=>!DEC[c.id]);
+  const nP=Object.keys(PENDING).length;
+  $("stats").innerHTML=`<span class="stat"><b>${undecided.length}</b>대기</span>
+    <span class="stat"><b>${Object.values(DEC).filter(d=>d.결정==="승인").length}</b>승인됨</span>
+    <span class="stat"><b>${Object.values(DEC).filter(d=>d.결정==="반려").length}</b>반려됨</span>
+    <span class="stat">최근 14일 제안 <b>${CANDS.length}</b></span>`;
+  const byDate={};
+  for(const c of undecided)(byDate[c.date]??=[]).push(c);
+  let h="";
+  for(const date of Object.keys(byDate).sort().reverse()){
+    h+=`<p class="day">${date}</p>`;
+    for(const c of byDate[date]){
+      const p=PENDING[c.id];
+      h+=`<div class="card ${p?"decided-"+p:""}" id="c-${c.id}">
+        <div class="chiprow"><span class="chip t-${c.type}">${c.type}</span></div>
+        <div class="body">${c.main}</div>
+        ${c.src?`<div class="src">근거: ${esc(c.src)}</div>`:""}
+        <div class="btns">
+          <button class="ok ${p==="승인"?"on":""}" onclick="mark('${c.id}','승인')">승인</button>
+          <button class="no ${p==="반려"?"on":""}" onclick="mark('${c.id}','반려')">반려</button>
+        </div></div>`;
+    }
+  }
+  $("list").innerHTML=h||'<p class="empty">대기 중인 제안이 없어요 🌙<br>내일 수집이 돌면 새 제안이 올라옵니다.</p>';
+  $("save-n").textContent=nP?`${nP}건 결정 — 저장하면 프라이빗 저장소에 커밋됩니다`:"";
+  $("savebar").classList.toggle("show",nP>0);
+}
+
+window.mark=(id,v)=>{ if(PENDING[id]===v)delete PENDING[id]; else PENDING[id]=v; render(); };
+
+async function save(){
+  $("save").disabled=true;
+  try{
+    const now=new Date().toISOString();
+    const merged=Object.values(DEC);
+    for(const[id,v]of Object.entries(PENDING)){
+      const c=CANDS.find(x=>x.id===id);
+      merged.push({id,결정:v,ts:now,type:c?.type,내용:c?.raw});
+    }
+    const body={message:`승인 데스크: ${Object.keys(PENDING).length}건 결정`,branch:BR,
+      content:b64e(JSON.stringify({decisions:merged},null,1))};
+    if(DECSHA)body.sha=DECSHA;
+    const r=await fetch(API+"kb/_data/approvals/decisions.json",{method:"PUT",headers:hdr(),body:JSON.stringify(body)});
+    if(!r.ok)throw new Error("저장 실패 "+r.status+(r.status===409?" — 새로고침 후 다시 시도":""));
+    await loadAll();
+  }catch(e){alert(e.message);}
+  $("save").disabled=false;
+}
+
+async function boot(){
+  if(!pat()){$("gate").hidden=false;return;}
+  $("gate").hidden=true;$("app").hidden=false;
+  try{await loadAll();}
+  catch(e){
+    $("app").hidden=true;$("gate").hidden=false;$("gate-err").textContent=e.message;
+  }
+}
+$("login").onclick=async()=>{ const v=$("pat").value.trim(); if(!v)return;
+  try{localStorage.setItem("onbam.admin.pat",v);}catch(e){alert("localStorage 사용 불가");return;}
+  $("pat").value=""; boot(); };
+$("logout").onclick=()=>{try{localStorage.removeItem("onbam.admin.pat");}catch(e){} location.reload();};
+$("reload").onclick=loadAll;
+$("save").onclick=save;
+boot();
+</script>
+</body>
+</html>
