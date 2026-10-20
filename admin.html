@@ -11,37 +11,52 @@
 --good:#6FCF97;--bad:#EB7A7A;--neu:#8FA3C7;--mono:ui-monospace,Menlo,monospace}
 *{box-sizing:border-box}
 body{margin:0;background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--txt);
-font-family:-apple-system,"Apple SD Gothic Neo",sans-serif;min-height:100vh;padding:0 16px 80px}
+font-family:-apple-system,"Apple SD Gothic Neo",sans-serif;min-height:100vh;padding:0 16px 90px}
 .wrap{max-width:760px;margin:0 auto}
 header{display:flex;align-items:baseline;gap:10px;padding:26px 0 6px}
 h1{font-size:22px;color:var(--gold2);margin:0;letter-spacing:.06em}
 .sub{font-size:12px;color:var(--dim)}
 .panel{background:var(--plate);border:1px solid var(--hair);border-radius:14px;padding:16px;margin:12px 0}
 .hint{font-size:12px;color:var(--dim);line-height:1.8;margin:6px 0}
-input[type=password],input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var(--hair);
+input[type=password]{width:100%;padding:12px;border-radius:10px;border:1px solid var(--hair);
 background:var(--bg);color:var(--txt);font-size:14px}
+textarea{width:100%;padding:10px;border-radius:10px;border:1px solid var(--hair);
+background:var(--bg);color:var(--txt);font-size:13px;min-height:64px;margin-top:8px;font-family:inherit}
 button{border:1px solid var(--hair);background:var(--plate2);color:var(--txt);border-radius:10px;
 padding:10px 16px;font-size:14px;cursor:pointer}
 button.primary{border-color:var(--gold);color:var(--gold2)}
 button:disabled{opacity:.4;cursor:default}
+.tabs{display:flex;gap:8px;margin:14px 0 4px}
+.tabs button{flex:1;padding:12px 0;font-size:14px}
+.tabs button.on{border-color:var(--gold);color:var(--gold2);background:rgba(217,164,65,.08)}
 .stats{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
 .stat{background:var(--plate2);border:1px solid var(--hair);border-radius:12px;padding:8px 14px;font-size:12px;color:var(--dim)}
 .stat b{color:var(--gold2);font-size:16px;margin-right:4px}
 .card{background:var(--plate);border:1px solid var(--hair);border-radius:14px;padding:14px;margin:10px 0}
-.card.decided-승인{border-color:var(--good)}
-.card.decided-반려{border-color:var(--bad);opacity:.75}
+.card.p-정확{border-color:var(--good)}
+.card.p-수정{border-color:var(--gold)}
+.card.p-승인{border-color:var(--good)}
+.card.p-반려{border-color:var(--bad);opacity:.8}
 .chiprow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
 .chip{font-size:11px;padding:2px 10px;border-radius:12px;border:1px solid var(--hair);color:var(--dim)}
+.chip.d-길몽{border-color:var(--good);color:var(--good)}
+.chip.d-흉몽{border-color:var(--bad);color:var(--bad)}
+.chip.d-혼합{border-color:var(--gold);color:var(--gold2)}
+.chip.d-중립,.chip.d-판정유보{border-color:var(--neu);color:var(--neu)}
 .chip.t-별칭{border-color:var(--neu);color:var(--neu)}
 .chip.t-rule{border-color:var(--gold);color:var(--gold2)}
 .chip.t-골든셋{border-color:var(--good);color:var(--good)}
 .chip.t-갈림{border-color:var(--bad);color:var(--bad)}
-.chip.t-QA{border-color:#B48FD9;color:#C9A8E8}
+.dream{font-size:14.5px;line-height:1.8;background:var(--bg);border:1px solid var(--hair);
+border-radius:10px;padding:10px 12px;margin:4px 0 8px}
 .body{font-size:14px;line-height:1.75}
-.src{font-size:11.5px;color:var(--dim);margin-top:6px;font-family:var(--mono)}
+.ev{font-size:12.5px;line-height:1.7;margin-top:6px;color:var(--dim)}
+.ev b{color:var(--txt);font-weight:600}
+.src{font-size:11.5px;color:var(--faint);margin-top:6px;font-family:var(--mono)}
 .btns{display:flex;gap:8px;margin-top:12px}
 .btns button{flex:1;padding:12px 0}
 .btns .ok.on{background:rgba(111,207,151,.15);border-color:var(--good);color:var(--good)}
+.btns .fix.on{background:rgba(217,164,65,.12);border-color:var(--gold);color:var(--gold2)}
 .btns .no.on{background:rgba(235,122,122,.12);border-color:var(--bad);color:var(--bad)}
 .savebar{position:fixed;left:0;right:0;bottom:0;background:rgba(14,22,46,.95);backdrop-filter:blur(8px);
 border-top:1px solid var(--hair);padding:12px 16px;display:none}
@@ -49,22 +64,19 @@ border-top:1px solid var(--hair);padding:12px 16px;display:none}
 .savebar .in{max-width:760px;margin:0 auto;display:flex;gap:10px;align-items:center}
 .savebar .n{font-size:13px;color:var(--dim);flex:1}
 .day{font-size:12px;color:var(--faint);margin:18px 0 4px;letter-spacing:.1em}
-.empty{text-align:center;color:var(--dim);padding:40px 0;font-size:14px}
+.empty{text-align:center;color:var(--dim);padding:40px 0;font-size:14px;line-height:2}
 .topbar{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin:4px 0}
 .topbar button{padding:6px 12px;font-size:12px}
-a{color:var(--gold2)}
 .err{color:var(--bad);font-size:13px;margin-top:8px}
 </style>
 </head>
 <body>
 <div class="wrap">
-<header><h1>온밤 승인 데스크</h1><span class="sub" id="sub">제안 큐 검수</span></header>
+<header><h1>온밤 승인 데스크</h1><span class="sub">매일의 답변 검수 + 지식사전 제안</span></header>
 
 <div id="gate" class="panel" hidden>
-  <p class="hint"><b>운영자 전용.</b> 프라이빗 저장소의 제안 큐를 불러오려면 GitHub 토큰이 필요합니다.
+  <p class="hint"><b>운영자 전용.</b> 프라이빗 저장소의 데이터를 불러오려면 GitHub 토큰이 필요합니다.
   토큰은 이 브라우저(localStorage)에만 저장되고 GitHub API 외 어디로도 전송되지 않습니다.</p>
-  <p class="hint">발급: GitHub → Settings → Developer settings → <b>Fine-grained tokens</b> →
-  Repository access: <b>harness-onbam만</b> → Permissions: <b>Contents Read and write</b>.</p>
   <input type="password" id="pat" placeholder="github_pat_…" autocomplete="off">
   <div class="btns"><button class="primary" id="login">연결</button></div>
   <p class="err" id="gate-err"></p>
@@ -72,7 +84,12 @@ a{color:var(--gold2)}
 
 <div id="app" hidden>
   <div class="topbar"><button id="reload">새로고침</button><button id="logout">토큰 삭제</button></div>
+  <div class="tabs">
+    <button id="tab-qa" class="on">답변 검수</button>
+    <button id="tab-kb">지식사전 제안</button>
+  </div>
   <div class="stats" id="stats"></div>
+  <p class="hint" id="tab-hint"></p>
   <div id="list"></div>
 </div>
 </div>
@@ -94,24 +111,46 @@ const b64e=s=>{const b=new TextEncoder().encode(s);let o="";b.forEach(c=>o+=Stri
 const djb2=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h*33)^s.charCodeAt(i))>>>0;return h.toString(36);};
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
-let CANDS=[], DEC={}, DECSHA=null, PENDING={};
+let TAB="qa";
+let QA=[], QAFB={}, QAFBSHA=null, QAPEND={};      // 답변 검수
+let CANDS=[], DEC={}, DECSHA=null, KBPEND={};      // KB 제안
 
 async function gh(path,opt){const r=await fetch(API+path+(path.includes("?")?"&":"?")+"ref="+BR,{headers:hdr(),...opt});
   if(r.status===404)return null;
-  if(!r.ok)throw new Error("GitHub "+r.status+(r.status===401?" — 토큰이 유효하지 않아요":r.status===403?" — 권한 부족(Contents RW·harness-onbam 확인)":""));
+  if(!r.ok)throw new Error("GitHub "+r.status+(r.status===401?" — 토큰이 유효하지 않아요":r.status===403?" — 권한 부족(Contents RW 확인)":""));
   return r.json();}
 
-async function loadAll(){
-  $("stats").innerHTML='<span class="stat">불러오는 중…</span>';
+/* ── 답변 검수: kb/_data/qa/daily/rs-*.json (매일 조합 꿈 10개의 실제 판정 결과) ── */
+async function loadQA(){
+  const dirs=await gh("kb/_data/qa/daily");
+  if(!dirs){QA=[];return;}
+  const files=dirs.filter(f=>/^rs-\d{4}-\d{2}-\d{2}\.json$/.test(f.name)).sort((a,b)=>b.name.localeCompare(a.name)).slice(0,7);
+  QA=[];
+  for(const f of files){
+    const j=await gh("kb/_data/qa/daily/"+f.name); if(!j)continue;
+    let d; try{d=JSON.parse(b64d(j.content));}catch(e){continue;}
+    const date=f.name.slice(3,13);
+    for(const r of d.results||[]){
+      if(r.error)continue;
+      QA.push({id:date+"#"+r.case_id,date,r});
+    }
+  }
+  const fb=await gh("kb/_data/qa/feedback.json");
+  QAFB={}; QAFBSHA=null;
+  if(fb){QAFBSHA=fb.sha; try{for(const it of JSON.parse(b64d(fb.content)).items||[])QAFB[it.id]=it;}catch(e){}}
+}
+
+/* ── KB 제안: kb/_data/proposals/*.json ── */
+async function loadKB(){
   const dirs=await gh("kb/_data/proposals");
-  if(!dirs)throw new Error("proposals 폴더를 찾을 수 없어요");
+  if(!dirs){CANDS=[];return;}
   const files=dirs.filter(f=>/^\d{4}-\d{2}-\d{2}\.json$/.test(f.name)).sort((a,b)=>b.name.localeCompare(a.name)).slice(0,14);
   CANDS=[];
   for(const f of files){
     const j=await gh("kb/_data/proposals/"+f.name); if(!j)continue;
     let d; try{d=JSON.parse(b64d(j.content));}catch(e){continue;}
     const date=f.name.slice(0,10);
-    const push=(type,obj,main,src)=>CANDS.push({id:date+"#"+type+"#"+djb2(JSON.stringify(obj)),date,type,main,src,raw:obj});
+    const push=(type,obj,main,src)=>CANDS.push({id:date+"#"+type+"#"+djb2(JSON.stringify(obj)),date,type,main,src});
     (d.alias_candidates||[]).forEach(o=>push("별칭",o,`<b>${esc(o.concept_id)}</b> ← “${esc(o.표현)}”`,o.근거_제목));
     (d.rule_candidates||[]).forEach(o=>push("rule",o,`<b>${esc(o.주제)}</b> — 조건: ${esc(o.조건)} · 방향 추정: ${esc(o.방향_추정)}`,o.근거_제목));
     (d.goldenset_candidates||[]).forEach(o=>push("골든셋",o,esc(o.요약),o.근거_제목));
@@ -120,55 +159,111 @@ async function loadAll(){
   const dj=await gh("kb/_data/approvals/decisions.json");
   DEC={}; DECSHA=null;
   if(dj){DECSHA=dj.sha; try{for(const d of JSON.parse(b64d(dj.content)).decisions||[])DEC[d.id]=d;}catch(e){}}
-  PENDING={};
+}
+
+async function loadAll(){
+  $("stats").innerHTML='<span class="stat">불러오는 중…</span>';
+  await Promise.all([loadQA(),loadKB()]);
+  QAPEND={}; KBPEND={};
   render();
 }
 
-function render(){
-  const undecided=CANDS.filter(c=>!DEC[c.id]);
-  const nP=Object.keys(PENDING).length;
-  $("stats").innerHTML=`<span class="stat"><b>${undecided.length}</b>대기</span>
-    <span class="stat"><b>${Object.values(DEC).filter(d=>d.결정==="승인").length}</b>승인됨</span>
-    <span class="stat"><b>${Object.values(DEC).filter(d=>d.결정==="반려").length}</b>반려됨</span>
-    <span class="stat">최근 14일 제안 <b>${CANDS.length}</b></span>`;
-  const byDate={};
-  for(const c of undecided)(byDate[c.date]??=[]).push(c);
-  let h="";
-  for(const date of Object.keys(byDate).sort().reverse()){
-    h+=`<p class="day">${date}</p>`;
-    for(const c of byDate[date]){
-      const p=PENDING[c.id];
-      h+=`<div class="card ${p?"decided-"+p:""}" id="c-${c.id}">
-        <div class="chiprow"><span class="chip t-${c.type}">${c.type}</span></div>
-        <div class="body">${c.main}</div>
-        ${c.src?`<div class="src">근거: ${esc(c.src)}</div>`:""}
-        <div class="btns">
-          <button class="ok ${p==="승인"?"on":""}" onclick="mark('${c.id}','승인')">승인</button>
-          <button class="no ${p==="반려"?"on":""}" onclick="mark('${c.id}','반려')">반려</button>
-        </div></div>`;
-    }
-  }
-  $("list").innerHTML=h||'<p class="empty">대기 중인 제안이 없어요 🌙<br>내일 수집이 돌면 새 제안이 올라옵니다.</p>';
-  $("save-n").textContent=nP?`${nP}건 결정 — 저장하면 프라이빗 저장소에 커밋됩니다`:"";
-  $("savebar").classList.toggle("show",nP>0);
+function qaCard(x){
+  const p=QAPEND[x.id];
+  const r=x.r;
+  const ev=[];
+  if(r.길인용)ev.push(`<span style="color:var(--good)">길</span> <b>${esc(r.길인용.concept)}</b> — ${esc(r.길인용.claim)}${r.길인용.full?"":" <span class='src'>(부분일치)</span>"}`);
+  if(r.흉인용)ev.push(`<span style="color:var(--bad)">흉</span> <b>${esc(r.흉인용.concept)}</b> — ${esc(r.흉인용.claim)}${r.흉인용.full?"":" <span class='src'>(부분일치)</span>"}`);
+  return `<div class="card ${p?"p-"+p.v:""}" id="c-${x.id}">
+    <div class="chiprow"><span class="chip d-${r.판정}">${r.판정}</span>
+      ${(r.추출상징||[]).map(s=>`<span class="chip">${esc(s)}</span>`).join("")}</div>
+    <div class="dream">${esc(r.text)}</div>
+    ${ev.length?`<div class="ev">${ev.join("<br>")}</div>`:'<div class="ev src">인용된 근거 없음</div>'}
+    <div class="btns">
+      <button class="ok ${p&&p.v==="정확"?"on":""}" onclick="qmark('${x.id}','정확')">제대로 나옴</button>
+      <button class="fix ${p&&p.v==="수정"?"on":""}" onclick="qmark('${x.id}','수정')">수정 필요</button>
+    </div>
+    ${p&&p.v==="수정"?`<textarea id="m-${x.id}" placeholder="뭐가 이상했는지 한 줄 (예: 꿈에 없는 얘기를 함 / 핵심을 놓침 / 판정이 이상함)" oninput="qmemo('${x.id}',this.value)">${esc(p.메모||"")}</textarea>`:""}
+  </div>`;
 }
 
-window.mark=(id,v)=>{ if(PENDING[id]===v)delete PENDING[id]; else PENDING[id]=v; render(); };
+function render(){
+  $("tab-qa").classList.toggle("on",TAB==="qa");
+  $("tab-kb").classList.toggle("on",TAB==="kb");
+  let h="";
+  if(TAB==="qa"){
+    $("tab-hint").innerHTML="매일 자동 생성된 조합 꿈 10개를 온밤이 실제로 판정한 결과예요. <b>답이 와닿는지</b>만 봐주면 됩니다 — '수정 필요'에 남긴 메모는 보정 기준이 되어 다음 개선에 반영돼요.";
+    const undone=QA.filter(x=>!QAFB[x.id]);
+    $("stats").innerHTML=`<span class="stat"><b>${undone.length}</b>검수 대기</span>
+      <span class="stat"><b>${Object.keys(QAFB).length}</b>검수 완료</span>
+      <span class="stat">최근 7일 <b>${QA.length}</b>건</span>`;
+    const by={}; for(const x of undone)(by[x.date]??=[]).push(x);
+    for(const date of Object.keys(by).sort().reverse()){
+      h+=`<p class="day">${date} — 오늘의 꿈 ${by[date].length}건</p>`;
+      for(const x of by[date])h+=qaCard(x);
+    }
+    h=h||'<p class="empty">검수할 답변이 없어요 🌙<br>내일 아침 파이프라인이 돌면 새 꿈 10건이 올라옵니다.</p>';
+  }else{
+    $("tab-hint").innerHTML="수집에서 발견된 <b>지식사전 추가 후보</b>예요. 승인하면 바로 반영되는 게 아니라, 반영 작업 때 승인분만 검증을 거쳐 사전에 들어갑니다.";
+    const undecided=CANDS.filter(c=>!DEC[c.id]);
+    $("stats").innerHTML=`<span class="stat"><b>${undecided.length}</b>대기</span>
+      <span class="stat"><b>${Object.values(DEC).filter(d=>d.결정==="승인").length}</b>승인됨</span>
+      <span class="stat"><b>${Object.values(DEC).filter(d=>d.결정==="반려").length}</b>반려됨</span>`;
+    const by={}; for(const c of undecided)(by[c.date]??=[]).push(c);
+    for(const date of Object.keys(by).sort().reverse()){
+      h+=`<p class="day">${date}</p>`;
+      for(const c of by[date]){
+        const p=KBPEND[c.id];
+        h+=`<div class="card ${p?"p-"+p:""}">
+          <div class="chiprow"><span class="chip t-${c.type}">${c.type}</span></div>
+          <div class="body">${c.main}</div>
+          ${c.src?`<div class="src">근거: ${esc(c.src)}</div>`:""}
+          <div class="btns">
+            <button class="ok ${p==="승인"?"on":""}" onclick="kmark('${c.id}','승인')">승인</button>
+            <button class="no ${p==="반려"?"on":""}" onclick="kmark('${c.id}','반려')">반려</button>
+          </div></div>`;
+      }
+    }
+    h=h||'<p class="empty">대기 중인 제안이 없어요 🌙</p>';
+  }
+  $("list").innerHTML=h;
+  const n=Object.keys(QAPEND).length+Object.keys(KBPEND).length;
+  $("save-n").textContent=n?`${n}건 결정 — 저장하면 프라이빗 저장소에 커밋됩니다`:"";
+  $("savebar").classList.toggle("show",n>0);
+}
+
+window.qmark=(id,v)=>{ if(QAPEND[id]&&QAPEND[id].v===v)delete QAPEND[id]; else QAPEND[id]={v,메모:(QAPEND[id]||{}).메모||""}; render(); };
+window.qmemo=(id,t)=>{ if(QAPEND[id])QAPEND[id].메모=t; const n=Object.keys(QAPEND).length+Object.keys(KBPEND).length;
+  $("save-n").textContent=`${n}건 결정 — 저장하면 프라이빗 저장소에 커밋됩니다`; };
+window.kmark=(id,v)=>{ if(KBPEND[id]===v)delete KBPEND[id]; else KBPEND[id]=v; render(); };
+
+async function putJson(path,obj,sha,msg){
+  const body={message:msg,branch:BR,content:b64e(JSON.stringify(obj,null,1))};
+  if(sha)body.sha=sha;
+  const r=await fetch(API+path,{method:"PUT",headers:hdr(),body:JSON.stringify(body)});
+  if(!r.ok)throw new Error("저장 실패 "+r.status+(r.status===409?" — 새로고침 후 다시":""));
+}
 
 async function save(){
   $("save").disabled=true;
   try{
     const now=new Date().toISOString();
-    const merged=Object.values(DEC);
-    for(const[id,v]of Object.entries(PENDING)){
-      const c=CANDS.find(x=>x.id===id);
-      merged.push({id,결정:v,ts:now,type:c?.type,내용:c?.raw});
+    if(Object.keys(QAPEND).length){
+      const items=Object.values(QAFB);
+      for(const[id,p]of Object.entries(QAPEND)){
+        const x=QA.find(q=>q.id===id);
+        items.push({id,결정:p.v,메모:p.메모||"",ts:now,꿈:x?.r.text,판정:x?.r.판정});
+      }
+      await putJson("kb/_data/qa/feedback.json",{items},QAFBSHA,`답변 검수: ${Object.keys(QAPEND).length}건`);
     }
-    const body={message:`승인 데스크: ${Object.keys(PENDING).length}건 결정`,branch:BR,
-      content:b64e(JSON.stringify({decisions:merged},null,1))};
-    if(DECSHA)body.sha=DECSHA;
-    const r=await fetch(API+"kb/_data/approvals/decisions.json",{method:"PUT",headers:hdr(),body:JSON.stringify(body)});
-    if(!r.ok)throw new Error("저장 실패 "+r.status+(r.status===409?" — 새로고침 후 다시 시도":""));
+    if(Object.keys(KBPEND).length){
+      const merged=Object.values(DEC);
+      for(const[id,v]of Object.entries(KBPEND)){
+        const c=CANDS.find(x=>x.id===id);
+        merged.push({id,결정:v,ts:now,type:c?.type});
+      }
+      await putJson("kb/_data/approvals/decisions.json",{decisions:merged},DECSHA,`승인 데스크: ${Object.keys(KBPEND).length}건 결정`);
+    }
     await loadAll();
   }catch(e){alert(e.message);}
   $("save").disabled=false;
@@ -178,16 +273,16 @@ async function boot(){
   if(!pat()){$("gate").hidden=false;return;}
   $("gate").hidden=true;$("app").hidden=false;
   try{await loadAll();}
-  catch(e){
-    $("app").hidden=true;$("gate").hidden=false;$("gate-err").textContent=e.message;
-  }
+  catch(e){$("app").hidden=true;$("gate").hidden=false;$("gate-err").textContent=e.message;}
 }
-$("login").onclick=async()=>{ const v=$("pat").value.trim(); if(!v)return;
+$("login").onclick=()=>{ const v=$("pat").value.trim(); if(!v)return;
   try{localStorage.setItem("onbam.admin.pat",v);}catch(e){alert("localStorage 사용 불가");return;}
   $("pat").value=""; boot(); };
 $("logout").onclick=()=>{try{localStorage.removeItem("onbam.admin.pat");}catch(e){} location.reload();};
 $("reload").onclick=loadAll;
 $("save").onclick=save;
+$("tab-qa").onclick=()=>{TAB="qa";render();};
+$("tab-kb").onclick=()=>{TAB="kb";render();};
 boot();
 </script>
 </body>
