@@ -87,6 +87,7 @@ border-top:1px solid var(--hair);padding:12px 16px;display:none}
   <div class="tabs">
     <button id="tab-qa" class="on">답변 검수</button>
     <button id="tab-kb">지식사전 제안</button>
+    <button id="tab-imp">개선 제안</button>
   </div>
   <div class="stats" id="stats"></div>
   <p class="hint" id="tab-hint"></p>
@@ -114,6 +115,7 @@ const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&g
 let TAB="qa";
 let QA=[], QAFB={}, QAFBSHA=null, QAPEND={};      // 답변 검수
 let CANDS=[], DEC={}, DECSHA=null, KBPEND={};      // KB 제안
+let IMP=[], IMPSHA=null, IMPPEND={};               // 개선 제안
 
 async function gh(path,opt){const r=await fetch(API+path+(path.includes("?")?"&":"?")+"ref="+BR,{headers:hdr(),...opt});
   if(r.status===404)return null;
@@ -161,10 +163,16 @@ async function loadKB(){
   if(dj){DECSHA=dj.sha; try{for(const d of JSON.parse(b64d(dj.content)).decisions||[])DEC[d.id]=d;}catch(e){}}
 }
 
+async function loadImp(){
+  const j=await gh("kb/_data/qa/improvements.json");
+  IMP=[]; IMPSHA=null;
+  if(j){IMPSHA=j.sha; try{IMP=JSON.parse(b64d(j.content)).items||[];}catch(e){}}
+}
+
 async function loadAll(){
   $("stats").innerHTML='<span class="stat">불러오는 중…</span>';
-  await Promise.all([loadQA(),loadKB()]);
-  QAPEND={}; KBPEND={};
+  await Promise.all([loadQA(),loadKB(),loadImp()]);
+  QAPEND={}; KBPEND={}; IMPPEND={};
   render();
 }
 
@@ -190,6 +198,7 @@ function qaCard(x){
 function render(){
   $("tab-qa").classList.toggle("on",TAB==="qa");
   $("tab-kb").classList.toggle("on",TAB==="kb");
+  $("tab-imp").classList.toggle("on",TAB==="imp");
   let h="";
   if(TAB==="qa"){
     $("tab-hint").innerHTML="매일 자동 생성된 조합 꿈 10개를 온밤이 실제로 판정한 결과예요. <b>답이 와닿는지</b>만 봐주면 됩니다 — '수정 필요'에 남긴 메모는 보정 기준이 되어 다음 개선에 반영돼요.";
@@ -203,6 +212,24 @@ function render(){
       for(const x of by[date])h+=qaCard(x);
     }
     h=h||'<p class="empty">검수할 답변이 없어요 🌙<br>내일 아침 파이프라인이 돌면 새 꿈 10건이 올라옵니다.</p>';
+  }else if(TAB==="imp"){
+    $("tab-hint").innerHTML="QA 검수(에이전트 채점 + 운영자 피드백)에서 나온 <b>설계 수정안</b>이에요. 승인하면 반영 작업 때 게이트(골든셋 보전)를 거쳐 적용됩니다. ⚠ 판정식 항목은 승인 = \'검토 착수\'예요.";
+    const done=IMP.filter(x=>x.결정);
+    $("stats").innerHTML=`<span class="stat"><b>${IMP.filter(x=>!x.결정).length}</b>대기</span>
+      <span class="stat"><b>${done.filter(x=>x.결정==="승인").length}</b>승인됨</span>
+      <span class="stat"><b>${done.filter(x=>x.결정==="반려").length}</b>반려됨</span>`;
+    for(const x of IMP.filter(x=>!x.결정)){
+      const p=IMPPEND[x.id];
+      h+=`<div class="card ${p?"p-"+p:""}">
+        <div class="chiprow"><span class="chip t-rule">${esc(x.분류)}</span><span class="chip">${esc(x.게이트)}</span><span class="chip">${esc(x.출처)}</span></div>
+        <div class="body"><b>${esc(x.제목)}</b><br>${esc(x.내용)}</div>
+        <div class="src">근거: ${esc(x.근거)}</div>
+        <div class="btns">
+          <button class="ok ${p==="승인"?"on":""}" onclick="imark('${x.id}','승인')">승인</button>
+          <button class="no ${p==="반려"?"on":""}" onclick="imark('${x.id}','반려')">반려</button>
+        </div></div>`;
+    }
+    h=h||'<p class="empty">대기 중인 개선 제안이 없어요 🌙<br>다음 QA 배치나 답변 검수 피드백에서 새 제안이 올라옵니다.</p>';
   }else{
     $("tab-hint").innerHTML="수집에서 발견된 <b>지식사전 추가 후보</b>예요. 승인하면 바로 반영되는 게 아니라, 반영 작업 때 승인분만 검증을 거쳐 사전에 들어갑니다.";
     const undecided=CANDS.filter(c=>!DEC[c.id]);
@@ -227,14 +254,15 @@ function render(){
     h=h||'<p class="empty">대기 중인 제안이 없어요 🌙</p>';
   }
   $("list").innerHTML=h;
-  const n=Object.keys(QAPEND).length+Object.keys(KBPEND).length;
+  const n=Object.keys(QAPEND).length+Object.keys(KBPEND).length+Object.keys(IMPPEND).length;
   $("save-n").textContent=n?`${n}건 결정 — 저장하면 프라이빗 저장소에 커밋됩니다`:"";
   $("savebar").classList.toggle("show",n>0);
 }
 
 window.qmark=(id,v)=>{ if(QAPEND[id]&&QAPEND[id].v===v)delete QAPEND[id]; else QAPEND[id]={v,메모:(QAPEND[id]||{}).메모||""}; render(); };
-window.qmemo=(id,t)=>{ if(QAPEND[id])QAPEND[id].메모=t; const n=Object.keys(QAPEND).length+Object.keys(KBPEND).length;
+window.qmemo=(id,t)=>{ if(QAPEND[id])QAPEND[id].메모=t; const n=Object.keys(QAPEND).length+Object.keys(KBPEND).length+Object.keys(IMPPEND).length;
   $("save-n").textContent=`${n}건 결정 — 저장하면 프라이빗 저장소에 커밋됩니다`; };
+window.imark=(id,v)=>{ if(IMPPEND[id]===v)delete IMPPEND[id]; else IMPPEND[id]=v; render(); };
 window.kmark=(id,v)=>{ if(KBPEND[id]===v)delete KBPEND[id]; else KBPEND[id]=v; render(); };
 
 async function putJson(path,obj,sha,msg){
@@ -255,6 +283,13 @@ async function save(){
         items.push({id,결정:p.v,메모:p.메모||"",ts:now,꿈:x?.r.text,판정:x?.r.판정});
       }
       await putJson("kb/_data/qa/feedback.json",{items},QAFBSHA,`답변 검수: ${Object.keys(QAPEND).length}건`);
+    }
+    if(Object.keys(IMPPEND).length){
+      for(const[id,v]of Object.entries(IMPPEND)){
+        const x=IMP.find(i=>i.id===id);
+        if(x){x.결정=v;x.결정ts=now;}
+      }
+      await putJson("kb/_data/qa/improvements.json",{items:IMP},IMPSHA,`개선 제안: ${Object.keys(IMPPEND).length}건 결정`);
     }
     if(Object.keys(KBPEND).length){
       const merged=Object.values(DEC);
@@ -283,6 +318,7 @@ $("reload").onclick=loadAll;
 $("save").onclick=save;
 $("tab-qa").onclick=()=>{TAB="qa";render();};
 $("tab-kb").onclick=()=>{TAB="kb";render();};
+$("tab-imp").onclick=()=>{TAB="imp";render();};
 boot();
 </script>
 </body>
