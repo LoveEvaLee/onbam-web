@@ -1007,15 +1007,29 @@ function sanitize(o){
 function liteExtract(text){
   const cons=[];
   /* 한 글자 별칭(뱀·불·돈·똥·피·차…)은 조사 경계로 매칭 — '불이/돈을'은 잡고 '비행기/돈가스'는 차단 (2026-10-02) */
-  const ONE_SKIP={"먹":1,"널":1,"분":1,"신":1,"낫":1,"입":1}; // 동사·일상어 충돌(먹는/널/5분/신다) — 2자 별칭으로만
+  const ONE_SKIP={"먹":1,"널":1,"분":1,"신":1,"낫":1,"입":1,"함":1}; // 동사·일상어 충돌(먹는/널/5분/신다/함께) — 2자 별칭으로만
+  /* 붙여쓰기 보정 — 수식어+상징이 붙은 표기('빨간뱀')를 띄워 1자 경계 매칭이 닿게 (imp-004, 2026-10-27) */
+  text=text.replace(/(빨간|파란|노란|하얀|까만|검은|커다란|조그만|새끼)(?=[가-힣])/g,"$1 ");
   /* '약 30분'·'약 세 시간' = 대략(約) 용법 — 숫자(디지트는 즉시, 한글 수사는 단위 동반)가 이어지는 구간을 지우고 나서 약(藥)을 매칭 (2026-10-02) */
   const ONE_GUARD={"약":/약\s*(?:[0-9０-９]|(?:한|두|세|네|다섯|여섯|일곱|여덟|아홉|열|스물|서른|몇|수십|수백)\s*(?:분|시간|초|일|주|달|개월|년|미터|킬로|리|명|마리|개|번|차례|걸음|살|평|%))/g,
-    "검":/검은|검게|검디/g}; // '검은 연기'의 검정(形)이 검(劍)+조사 '은'으로 오인되던 것 차단 (2026-10-08 실측)
+    "검":/검은|검게|검디/g, // '검은 연기'의 검정(形)이 검(劍)+조사 '은'으로 오인되던 것 차단 (2026-10-08 실측)
+    "초":/초\s?[0-9０-９]|[0-9０-９]\s?초|초등|초반|초기|초대|초코|초밥|최초|애초/g, // '초2'(학년)·'3초' ≠ 촛불 (imp-003)
+    "해":/해\s?주|해줘|해야|해서|해도|해보|해봤|해볼|하해/g}; // '해 주세요' ≠ 태양 (imp-003)
   const one=a=>{if(ONE_SKIP[a])return false;
     const t=ONE_GUARD[a]?text.replace(ONE_GUARD[a],""):text;
-    return new RegExp("(^|[^가-힣])"+a+"(?=(?:이|가|을|를|은|는|에서|에선|에는|에|의|도|만|랑|으로|로|한테|에게|께서|께|부터|까지|처럼|보다|조차|마저)?(?:[^가-힣]|$))").test(t);};
+    return new RegExp("(^|[^가-힣])"+a+"(?=(?:꿈)?(?:이|가|을|를|은|는|에서|에선|에는|에|의|도|만|랑|으로|로|한테|에게|께서|께|부터|까지|처럼|보다|조차|마저)?(?:[^가-힣]|$))").test(t);};  // '똥꿈'처럼 상징+꿈 합성어 허용 (imp-004)
   /* 2자 이상 별칭 가드 — '그대로/뜻대로'의 '대로'가 大路로 오인되던 것 차단 (2026-10-10 실측: 별장 꿈에 '사방 큰길' 인용) */
-  const MULTI_GUARD={"대로":/[가-힣]대로/g};
+  /* 2자+ 오탐 가드 2차 (imp-003, 2026-10-27 QA 실측) */
+  const MULTI_GUARD={"대로":/[가-힣]대로|\s대로(?=[\s,.!?~]|$)/g, // 그대로·'꿈꾸는 대로'(의존명사) ≠ 大路
+    "라면":/[가-힣]라면/g,          // 사랑이라면·꿈이라면 ≠ 라면(음식)
+    "가지":/(?:[0-9０-９]+|몇|여러|열|스무)\s*가지/g, // 40가지 ≠ 가지(채소)
+    "다리":/기다리|코다리/g,
+    "수정":/수정산|수정하|수정함|수정됐/g,
+    "인장":/선인장/g,
+    "경기":/경기도|경기권|경기북부|경기남부/g,  // 지명 ≠ 운동경기
+    "고기":/기차/g,                 // '사고나고기차'의 교차 오탐 — 기차를 지우고 고기 매칭
+    "마당":/아침마당/g,
+    "바람":/바람\s?(?:을\s?)?피|바람났|바람난|바람나/g}; // 외도는 infidelity concept가 담당 (imp-008)
   const has=a=>a.length>1?(MULTI_GUARD[a]?text.replace(MULTI_GUARD[a],""):text).includes(a):one(a);
   for(const c of KB.extract_view){
     const hit=c.aliases.find(has);
@@ -1045,7 +1059,9 @@ function liteFacts(t,c){
     else if(/놓쳤|놓치|도망가/.test(t))f.action="놓침";
     else if(/잡았|잡혔|잡히|낚/.test(t))f.action="잡음";
     else if(/잃어|없어졌|도둑맞/.test(t))f.action="잃음";
-    else if(/주웠|주었|받았/.test(t))f.action="줍음";
+    else if(/받았|받아서|받는|받은/.test(t))f.action="받음";   // '받았'이 줍음으로 가던 오매핑 수정 (imp-005)
+    else if(/돌려주|줬|주었/.test(t))f.action="줌";
+    else if(/주웠/.test(t))f.action="줍음";
     else if(/빠졌|빠지/.test(t)&&c.concept_id==="tooth")f.action="빠짐_치아";
     else if(/물렸|물리는|물어/.test(t))f.action="물림";
     else if(/할퀴/.test(t))f.action="할큄";
@@ -1054,9 +1070,12 @@ function liteFacts(t,c){
     else if(/올라갔|올라가|승천/.test(t))f.action="오름";
     else if(/뱉/.test(t))f.action="뱉음";
     else if(/쫓기|쫓아오|따라왔|따라오/.test(t))f.action="쫓김";
+    else if(/짖/.test(t))f.action="짖음";
   }
   if(c.facts.includes("state")){
-    if(/맑/.test(t))f.state="맑음"; else if(/흙탕|탁|흐린 물/.test(t))f.state="탁함";
+    if(/죽었|죽는|죽어|죽음|사망|자살/.test(t))f.state="죽음";   // 핵심 서사 '죽음' 추출 (imp-006 — "직역해야지")
+    else if(/아팠|아픈|아프/.test(t))f.state="아픔";
+    else if(/맑/.test(t))f.state="맑음"; else if(/흙탕|탁|흐린 물/.test(t))f.state="탁함";
     else if(/활활|타오/.test(t))f.state="타오름"; else if(/무너/.test(t))f.state="무너짐";
   }
   if(c.facts.includes("color")){
@@ -1067,7 +1086,7 @@ function liteFacts(t,c){
   }
   if(c.facts.includes("volume")&&/철철|콸콸|왈칵/.test(t))f.volume="철철";
   if(c.facts.includes("quantity")&&/많이|잔뜩|가득|대량|우수수/.test(t))f.quantity="대량";
-  if(c.facts.includes("possession")){ if(f.action==="잡음"||f.action==="줍음")f.possession=true;
+  if(c.facts.includes("possession")){ if(f.action==="잡음"||f.action==="줍음"||f.action==="받음")f.possession=true;
     if(f.action==="놓침"||f.action==="잃음")f.possession=false; }
   return f;
 }
@@ -1569,7 +1588,9 @@ function finish(){
     const cl=x=>x?esc(x.rule.claim.replace(/\.$/,"")):"";
     const josa=(w,a,b)=>{const c=w.charCodeAt(w.length-1);return w+((c>=0xAC00&&(c-0xAC00)%28>0)?a:b);};
     const josa2=(w,a,b)=>{const c=w.charCodeAt(w.length-1);return (c>=0xAC00&&(c-0xAC00)%28>0)?a:b;};
-    const lab=x=>x&&x.rule.concept?esc(cLabel(x.rule.concept)):"결말";  /* 전역 rule(구조 서사 등)은 '결말 장면'으로 */
+    /* 라벨은 실제 매칭된 단어(surf) 우선 — 반지가 '비녀'로 표기되던 문제 (imp-002, 2026-10-27) */
+    const SURF={};try{(cur.ex.scenes||[]).forEach(s2=>(s2.concepts||[]).forEach(c2=>{if(c2.surf&&!SURF[c2.concept_id])SURF[c2.concept_id]=c2.surf;}));}catch(err){}
+    const lab=x=>x&&x.rule.concept?esc(SURF[x.rule.concept]||cLabel(x.rule.concept)):"결말";
     const part=x=>x&&x.match<1?" (꿈의 정황과 완전히 겹치진 않았어요)":"";
     /* 인용 선정 — 조건 전부 일치(match≥1) 우선, 반대편과 같은 상징은 가능하면 회피 (2026-10-08: 같은 '차' 장면을 길·흉 양쪽에 인용하던 문제) */
     const pickQ=(arr,avoid)=>arr.find(x=>x.match>=1&&x.rule.concept&&x.rule.concept!==avoid)
@@ -1595,8 +1616,12 @@ function finish(){
       const lean=e.balance>0.15?" 굳이 저울을 보면 좋은 쪽이 조금 더 무거웠어요."
         :e.balance<-0.15?" 굳이 저울을 보면 조심 쪽이 조금 더 무거웠어요.":"";
       const g1=pickQ(G,null),b1=pickQ(B,g1&&g1.rule.concept);
-      if(g1&&b1&&g1.rule.concept&&g1.rule.concept===b1.rule.concept)
-        return `이번 꿈의 ${lab(g1)} 장면을 두고 전통 자료의 읽기가 갈려요 — 좋게는 “${cl(g1)}”, 조심스럽게는 “${cl(b1)}”. 꿈이 어느 전개였는지에 따라 저울이 기울어요${part(g1)||part(b1)?" (이번 서술로는 조건이 다 확인되지 않았어요)":""}.${lean} 좋은 흐름과 조심할 지점을 같이 품은 꿈으로 보면 돼요.`;
+      /* 같은 상징 갈림 분기도 완전일치만 인용 — partial 우회로 쌩뚱 인용되던 경로 봉쇄 (imp-001, 2026-10-27) */
+      if(g1&&b1&&g1.rule.concept&&g1.rule.concept===b1.rule.concept){
+        if(g1.match>=1&&b1.match>=1)
+          return `이번 꿈의 ${lab(g1)} 장면을 두고 전통 자료의 읽기가 갈려요 — 좋게는 “${cl(g1)}”, 조심스럽게는 “${cl(b1)}”.${lean} 좋은 흐름과 조심할 지점을 같이 품은 꿈으로 보면 돼요.`;
+        return `이번 꿈의 ${lab(g1)} 장면은 전개에 따라 좋게도 조심스럽게도 읽히는 상징인데, 이번 서술로는 어느 쪽 조건도 다 확인되지 않아 한쪽으로 정하지 않았어요.${lean} 전개(어떻게 됐는지)를 조금 더 적어주시면 저울이 기울어요.`;
+      }
       const ex2=extraOf(new Set([g1&&g1.rule.concept,b1&&b1.rule.concept]));
       /* partial 근거는 인용하지 않는다 — 안 겪은 전개("가족을 잃어버리고…")가 단정 인용되던 문제 (2026-10-10) */
       const gF=g1&&g1.match>=1,bF=b1&&b1.match>=1;
@@ -1640,7 +1665,7 @@ function finish(){
           if(sym)return `<p class="seg-r"><span class="chip dir-중립">상징</span><b>${esc(cLabel(c2.concept_id))}</b> — ${esc(sym.rule.claim.replace(/\.$/,""))} <span class="gr">· 전개가 더 잡히면 길흉도 가려 드려요</span></p>`;
           return `<p class="seg-r"><span class="chip grade">참고</span><b>${esc(cLabel(c2.concept_id))}</b> — 전개(어떻게 됐는지)에 따라 길흉이 갈리는 상징이에요. 이번 서술에는 그 전개가 잡히지 않아 판정에 약하게만 반영했어요.</p>`;
         }
-        return `<p class="seg-r"><span class="chip dir-${b.rule.direction}">${b.rule.direction==="중립"?"상징":b.rule.direction}</span><b>${esc(cLabel(c2.concept_id))}</b> — ${esc(b.rule.claim.replace(/\.$/,""))}</p>`;
+        return `<p class="seg-r"><span class="chip dir-${b.rule.direction}">${b.rule.direction==="중립"?"상징":b.rule.direction}</span><b>${esc(c2.surf||cLabel(c2.concept_id))}</b> — ${esc(b.rule.claim.replace(/\.$/,""))}</p>`;
       }).filter(Boolean);
       return reads.length?`<div class="segrow"><p class="seg-t">“${esc(r.seg.length>46?r.seg.slice(0,46)+"…":r.seg)}”</p>${reads.join("")}</div>`:null;
     }).filter(Boolean).join("");
