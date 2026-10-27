@@ -1007,9 +1007,9 @@ function sanitize(o){
 function liteExtract(text){
   const cons=[];
   /* 한 글자 별칭(뱀·불·돈·똥·피·차…)은 조사 경계로 매칭 — '불이/돈을'은 잡고 '비행기/돈가스'는 차단 (2026-10-02) */
-  const ONE_SKIP={"먹":1,"널":1,"분":1,"신":1,"낫":1,"입":1,"함":1}; // 동사·일상어 충돌(먹는/널/5분/신다/함께) — 2자 별칭으로만
+  const ONE_SKIP={"먹":1,"널":1,"분":1,"신":1,"낫":1,"입":1,"함":1,"이":1}; // 동사·일상어 충돌(먹는/널/5분/신다/함께) — 2자 별칭으로만
   /* 붙여쓰기 보정 — 수식어+상징이 붙은 표기('빨간뱀')를 띄워 1자 경계 매칭이 닿게 (imp-004, 2026-10-27) */
-  text=text.replace(/(빨간|파란|노란|하얀|까만|검은|커다란|조그만|새끼)(?=[가-힣])/g,"$1 ");
+  text=text.replace(/(빨간|파란|노란|하얀|까만|검은|커다란|조그만|새끼)(?=[가-힣])/g,"$1 ").replace(/ㅈㅅ/g,"자살");
   /* '약 30분'·'약 세 시간' = 대략(約) 용법 — 숫자(디지트는 즉시, 한글 수사는 단위 동반)가 이어지는 구간을 지우고 나서 약(藥)을 매칭 (2026-10-02) */
   const ONE_GUARD={"약":/약\s*(?:[0-9０-９]|(?:한|두|세|네|다섯|여섯|일곱|여덟|아홉|열|스물|서른|몇|수십|수백)\s*(?:분|시간|초|일|주|달|개월|년|미터|킬로|리|명|마리|개|번|차례|걸음|살|평|%))/g,
     "검":/검은|검게|검디/g, // '검은 연기'의 검정(形)이 검(劍)+조사 '은'으로 오인되던 것 차단 (2026-10-08 실측)
@@ -1017,7 +1017,7 @@ function liteExtract(text){
     "해":/해\s?주|해줘|해야|해서|해도|해보|해봤|해볼|하해/g}; // '해 주세요' ≠ 태양 (imp-003)
   const one=a=>{if(ONE_SKIP[a])return false;
     const t=ONE_GUARD[a]?text.replace(ONE_GUARD[a],""):text;
-    return new RegExp("(^|[^가-힣])"+a+"(?=(?:꿈)?(?:이|가|을|를|은|는|에서|에선|에는|에|의|도|만|랑|으로|로|한테|에게|께서|께|부터|까지|처럼|보다|조차|마저)?(?:[^가-힣]|$))").test(t);};  // '똥꿈'처럼 상징+꿈 합성어 허용 (imp-004)
+    return new RegExp("(^|[^가-힣])"+a+"(?=(?:꿈|보는|봤|본|나오|나왔|나와|위에|안에|밑에|옆에)?(?:이랑|이며|하고|이|가|을|를|은|는|에서|에선|에는|에|의|도|만|랑|으로|로|한테|에게|께서|께|부터|까지|처럼|보다|조차|마저)?(?:[^가-힣]|$))").test(t);};  // 상징+꿈/동사어간/위치 합성 허용 (imp-004·qa-050·080)
   /* 2자 이상 별칭 가드 — '그대로/뜻대로'의 '대로'가 大路로 오인되던 것 차단 (2026-10-10 실측: 별장 꿈에 '사방 큰길' 인용) */
   /* 2자+ 오탐 가드 2차 (imp-003, 2026-10-27 QA 실측) */
   const MULTI_GUARD={"대로":/[가-힣]대로|\s대로(?=[\s,.!?~]|$)/g, // 그대로·'꿈꾸는 대로'(의존명사) ≠ 大路
@@ -1026,15 +1026,32 @@ function liteExtract(text){
     "다리":/기다리|코다리/g,
     "수정":/수정산|수정하|수정함|수정됐/g,
     "인장":/선인장/g,
-    "경기":/경기도|경기권|경기북부|경기남부/g,  // 지명 ≠ 운동경기
+    "경기":/경기도|경기권|경기 ?(?:남양주|수원|성남|용인|고양|부천|안산|안양|화성|평택|의정부|파주|김포|광명|광주|하남|이천|구리|시흥|군포|북부|남부)/g,  // 지명 ≠ 운동경기
     "고기":/기차/g,                 // '사고나고기차'의 교차 오탐 — 기차를 지우고 고기 매칭
     "마당":/아침마당/g,
+    "태몽":/태몽(?:일까|인가|인지|일지|인가요|일까요|맞나|맞을까|아닐까|이라던데|이래)/g, // 질문·전언 ≠ 태몽 사건 (qa-044)
     "바람":/바람\s?(?:을\s?)?피|바람났|바람난|바람나/g}; // 외도는 infidelity concept가 담당 (imp-008)
-  const has=a=>a.length>1?(MULTI_GUARD[a]?text.replace(MULTI_GUARD[a],""):text).includes(a):one(a);
+  const has=a=>{
+    if(a==="고기"&&/낚시|낚아|낚았|낚는|그물|물고기/.test(text))return false; // 낚시 맥락의 고기=물고기 (qa-064)
+    return a.length>1?(MULTI_GUARD[a]?text.replace(MULTI_GUARD[a],""):text).includes(a):one(a);};
   for(const c of KB.extract_view){
     const hit=c.aliases.find(has);
     if(hit) cons.push({concept_id:c.concept_id,facts:liteFacts(text,c),surf:hit});
   }
+  /* 후처리 — 고인+친족 결합, 낚시 고기→물고기 (qa-076·064) */
+  try{
+    if(/돌아가신|돌아가셨/.test(text)){
+      const fam=KB.extract_view.find(x=>x.concept_id==="family_member");
+      if(fam&&fam.aliases.some(a=>a.length>1&&text.includes(a))){
+        const dp=cons.find(x=>x.concept_id==="deceased_person");
+        if(dp)dp.facts.known_person="가족";
+      }
+    }
+    if(/낚시|낚아|낚았|그물/.test(text)&&/고기/.test(text)&&!cons.some(x=>x.concept_id==="fish")){
+      const fi=KB.extract_view.find(x=>x.concept_id==="fish");
+      if(fi)cons.push({concept_id:"fish",facts:liteFacts(text,fi),surf:"고기"});
+    }
+  }catch(err){}
   const f={};
   if(/무사|다치지 않|멀쩡|살아남|살아 남|생존/.test(text))f.injury="none";
   /* 구조 서사 — 누군가 구해줌(타인 작용) / 위협을 제압·격퇴 (2026-10-08, 실꿈 체감 사례) */
@@ -1063,7 +1080,7 @@ function liteFacts(t,c){
     else if(/돌려주|줬|주었/.test(t))f.action="줌";
     else if(/주웠/.test(t))f.action="줍음";
     else if(/빠졌|빠지/.test(t)&&c.concept_id==="tooth")f.action="빠짐_치아";
-    else if(/물렸|물리는|물어/.test(t))f.action="물림";
+    else if(/물렸|물리는|물린|물려|물어/.test(t))f.action="물림";
     else if(/할퀴/.test(t))f.action="할큄";
     else if(/들어왔|들어오/.test(t))f.action="진입";
     else if(/추락|떨어졌|떨어지/.test(t))f.action="떨어짐";
@@ -1071,10 +1088,17 @@ function liteFacts(t,c){
     else if(/뱉/.test(t))f.action="뱉음";
     else if(/쫓기|쫓아오|따라왔|따라오/.test(t))f.action="쫓김";
     else if(/짖/.test(t))f.action="짖음";
+    else if(/사고가? ?(?:나|났|난)|치여|치였|치이|부딪|충돌|들이받/.test(t))f.action="충돌함";
+    else if(/홈런|골을? ?넣|골인|득점|슛/.test(t))f.action="넣음";
+    else if(/(비|눈|소나기|우박)[를을]? ?맞|맞으며/.test(t))f.action="맞음";
+    else if(/입고|입은|입었|입는/.test(t))f.action="입음";
+    else if(/안고|안았|품에 안/.test(t))f.action="안음";
+    else if(/올라타|타고 (?:가|다|날)|[를을] 타고|[를을] 탔/.test(t))f.action="탐";
   }
   if(c.facts.includes("state")){
     if(/죽었|죽는|죽어|죽음|사망|자살/.test(t))f.state="죽음";   // 핵심 서사 '죽음' 추출 (imp-006 — "직역해야지")
     else if(/아팠|아픈|아프/.test(t))f.state="아픔";
+    else if(/흔들/.test(t))f.state="흔들림";
     else if(/맑/.test(t))f.state="맑음"; else if(/흙탕|탁|흐린 물/.test(t))f.state="탁함";
     else if(/활활|타오/.test(t))f.state="타오름"; else if(/무너/.test(t))f.state="무너짐";
   }
@@ -1590,7 +1614,8 @@ function finish(){
     const josa2=(w,a,b)=>{const c=w.charCodeAt(w.length-1);return (c>=0xAC00&&(c-0xAC00)%28>0)?a:b;};
     /* 라벨은 실제 매칭된 단어(surf) 우선 — 반지가 '비녀'로 표기되던 문제 (imp-002, 2026-10-27) */
     const SURF={};try{(cur.ex.scenes||[]).forEach(s2=>(s2.concepts||[]).forEach(c2=>{if(c2.surf&&!SURF[c2.concept_id])SURF[c2.concept_id]=c2.surf;}));}catch(err){}
-    const lab=x=>x&&x.rule.concept?esc(SURF[x.rule.concept]||cLabel(x.rule.concept)):"결말";
+    const SURF_FIX={"이빠지":"이빨","바람피":"외도","바람 피":"외도","바람을 피":"외도","바람났":"외도","바람난":"외도","바람나는":"외도","돌아가신":"고인","돌아가셨":"고인","끌려가":"납치","끌려갔":"납치","죽는":"죽음","죽었":"죽음","죽어가":"죽음","피를 흘":"피","피나":"피","싸우":"싸움","싸웠":"싸움","다투":"다툼","아픈":"아픔","아팠":"아픔","아파":"아픔","앓는":"병","앓아":"병"};
+    const lab=x=>{if(!(x&&x.rule.concept))return"결말";const sv=SURF[x.rule.concept];return esc(sv?(SURF_FIX[sv]||sv):cLabel(x.rule.concept));};
     const part=x=>x&&x.match<1?" (꿈의 정황과 완전히 겹치진 않았어요)":"";
     /* 인용 선정 — 조건 전부 일치(match≥1) 우선, 반대편과 같은 상징은 가능하면 회피 (2026-10-08: 같은 '차' 장면을 길·흉 양쪽에 인용하던 문제) */
     const pickQ=(arr,avoid)=>arr.find(x=>x.match>=1&&x.rule.concept&&x.rule.concept!==avoid)
@@ -1601,14 +1626,16 @@ function finish(){
     const extraLine=x=>x?` 함께 잡힌 ${lab(x)} 장면은 “${cl(x)}”${josa2(cl(x),"이라는","라는")} 읽기도 있어요.`:"";
     if(e.call==="길몽"){
       const g1=pickQ(G,null),ex2=extraOf(new Set([g1&&g1.rule.concept]));
-      return `꿈의 중심에 있던 ${josa(lab(g1),"이","가")} 좋은 신호로 읽혔어요. 전통적으로 “${cl(g1)}”${josa2(cl(g1),"이라고","라고")} 봐요${part(g1)}.`
+      const gQ=g1&&g1.match>=1?`전통적으로 “${cl(g1)}”${josa2(cl(g1),"이라고","라고")} 봐요.`:"구체적인 읽기는 조건이 다 겹치지 않아 아껴둘게요.";
+      return `꿈의 중심에 있던 ${josa(lab(g1),"이","가")} 좋은 신호로 읽혔어요. ${gQ}`
         +(B.length?" 마음에 걸릴 만한 장면도 있었지만, 좋은 신호의 무게가 더 컸어요.":"")
         +extraLine(ex2)
         +" 오늘은 어깨 펴고 다녀도 되는 꿈이에요.";
     }
     if(e.call==="흉몽"){
       const b1=pickQ(B,null);
-      return `${josa(lab(b1),"이","가")} 조심하라는 신호로 읽혔어요. 전통적으로 “${cl(b1)}”${josa2(cl(b1),"이라고","라고")} 봐요${part(b1)}.`
+      const bQ=b1&&b1.match>=1?`전통적으로 “${cl(b1)}”${josa2(cl(b1),"이라고","라고")} 봐요.`:"구체적인 읽기는 조건이 다 겹치지 않아 아껴둘게요.";
+      return `${josa(lab(b1),"이","가")} 조심하라는 신호로 읽혔어요. ${bQ}`
         +(G.length?" 좋게 읽히는 장면도 있었지만 무게는 조심 쪽이었어요.":"")
         +" 나쁜 일이 정해졌다는 뜻은 아니에요 — 요즘 마음 쓰이던 일이 있다면 한 번 점검해 보라는 정도로 받아들이면 충분해요.";
     }
@@ -1620,6 +1647,9 @@ function finish(){
       if(g1&&b1&&g1.rule.concept&&g1.rule.concept===b1.rule.concept){
         if(g1.match>=1&&b1.match>=1)
           return `이번 꿈의 ${lab(g1)} 장면을 두고 전통 자료의 읽기가 갈려요 — 좋게는 “${cl(g1)}”, 조심스럽게는 “${cl(b1)}”.${lean} 좋은 흐름과 조심할 지점을 같이 품은 꿈으로 보면 돼요.`;
+        const full=g1.match>=1?g1:(b1.match>=1?b1:null);
+        if(full){const dirw=full===g1?"좋은":"조심할";
+          return `이번 꿈의 ${lab(full)} 장면은 “${cl(full)}”${josa2(cl(full),"으로","로")} 읽혀요 — ${dirw} 신호 쪽이에요. 반대 방향 읽기도 있는 상징이지만 이번 전개와는 조건이 겹치지 않아 세게 반영하지 않았어요.${lean}`;}
         return `이번 꿈의 ${lab(g1)} 장면은 전개에 따라 좋게도 조심스럽게도 읽히는 상징인데, 이번 서술로는 어느 쪽 조건도 다 확인되지 않아 한쪽으로 정하지 않았어요.${lean} 전개(어떻게 됐는지)를 조금 더 적어주시면 저울이 기울어요.`;
       }
       const ex2=extraOf(new Set([g1&&g1.rule.concept,b1&&b1.rule.concept]));
