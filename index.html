@@ -1014,7 +1014,14 @@ function liteExtract(text){
   const ONE_GUARD={"약":/약\s*(?:[0-9０-９]|(?:한|두|세|네|다섯|여섯|일곱|여덟|아홉|열|스물|서른|몇|수십|수백)\s*(?:분|시간|초|일|주|달|개월|년|미터|킬로|리|명|마리|개|번|차례|걸음|살|평|%))/g,
     "검":/검은|검게|검디/g, // '검은 연기'의 검정(形)이 검(劍)+조사 '은'으로 오인되던 것 차단 (2026-10-08 실측)
     "초":/초\s?[0-9０-９]|[0-9０-９]\s?초|초등|초반|초기|초대|초코|초밥|최초|애초/g, // '초2'(학년)·'3초' ≠ 촛불 (imp-003)
-    "해":/해\s?주|해줘|해야|해서|해도|해보|해봤|해볼|하해/g}; // '해 주세요' ≠ 태양 (imp-003)
+    "해":/해\s?주|해줘|해야|해서|해도|해보|해봤|해볼|하해/g, // '해 주세요' ≠ 태양 (imp-003)
+    "감":/(?:러|으러|고|서)\s?감(?=[\s,.!?~]|$)/g,           // '~하러 감' ≠ 감(과일)
+    "불":/불이?\s?(?:훤히\s?|환히\s?)?켜|불을?\s?켜|불\s?켜진/g, // 조명 점등 ≠ 화재
+    "돌":/돌보|돌봐|돌봤|돌본|돌볼/g,                           // 돌보다 ≠ 돌(石)
+    "장":/(?:[0-9０-９]+|한|두|세|네|몇|여러|이)\s?장/g,        // 수량사 장 ≠ 장(醬)
+    "차":/[로를]\s?차는|발로\s?차|걷어차/g,                    // 발차기 ≠ 차량
+    "말":/(?:그|이|저|한|두|무슨|어떤|다른|좋은|나쁜|막|거짓|헛|빈|혼잣|아무)\s?말|말(?:을|도|이)?\s?(?:안\s?)?(?:했|하|한|해|걸|씀|못|지켰|지키|들었|듣)/g, // 발화 ≠ 말(馬)
+    "꿀":/못\s?꿀|꿀\s?(?:줄|수)|꿀꿈/g}; // '꿈도 못 꿀' ≠ 꿀(蜜)
   const one=a=>{if(ONE_SKIP[a])return false;
     const t=ONE_GUARD[a]?text.replace(ONE_GUARD[a],""):text;
     return new RegExp("(^|[^가-힣])"+a+"(?=(?:꿈|보는|봤|본|나오|나왔|나와|위에|안에|밑에|옆에)?(?:이랑|이며|하고|이|가|을|를|은|는|에서|에선|에는|에|의|도|만|랑|으로|로|한테|에게|께서|께|부터|까지|처럼|보다|조차|마저)?(?:[^가-힣]|$))").test(t);};  // 상징+꿈/동사어간/위치 합성 허용 (imp-004·qa-050·080)
@@ -1030,7 +1037,14 @@ function liteExtract(text){
     "고기":/기차/g,                 // '사고나고기차'의 교차 오탐 — 기차를 지우고 고기 매칭
     "마당":/아침마당/g,
     "태몽":/태몽(?:일까|인가|인지|일지|인가요|일까요|맞나|맞을까|아닐까|이라던데|이래)/g, // 질문·전언 ≠ 태몽 사건 (qa-044)
-    "바람":/바람\s?(?:을\s?)?피|바람났|바람난|바람나/g}; // 외도는 infidelity concept가 담당 (imp-008)
+    "바람":/바람\s?(?:을\s?)?피|바람났|바람난|바람나/g, // 외도는 infidelity concept가 담당 (imp-008)
+    "사자":/사자성어|사자후|저승사자|특사|사자상/g,
+    "가지":/(?:[0-9０-９]+|한|두|세|네|몇|여러|다섯|열)\s?가지|(?:을|를)\s?가지|가지(?:는|고|게|려|면|기|다|었|셨)/g,
+    "비행":/비행기|비행장|비행선|비행사|비행편|비행청소년/g,
+    "아파":/아파트/g,
+    "자라":/자라서|자라고|자라나|자라났|자랐|자라면|자라던/g,
+    "수수":/우수수|수수료|수수께끼|수수하/g,
+    "새우":/새우잠/g}; 
   const has=a=>{
     if(a==="고기"&&/낚시|낚아|낚았|낚는|그물|물고기/.test(text))return false; // 낚시 맥락의 고기=물고기 (qa-064)
     return a.length>1?(MULTI_GUARD[a]?text.replace(MULTI_GUARD[a],""):text).includes(a):one(a);};
@@ -1040,12 +1054,20 @@ function liteExtract(text){
   }
   /* 후처리 — 고인+친족 결합, 낚시 고기→물고기 (qa-076·064) */
   try{
-    if(/돌아가신|돌아가셨/.test(text)){
+    if(/돌아가시|돌아가신|돌아가셨|돌아가셔/.test(text)){
       const fam=KB.extract_view.find(x=>x.concept_id==="family_member");
       if(fam&&fam.aliases.some(a=>a.length>1&&text.includes(a))){
         const dp=cons.find(x=>x.concept_id==="deceased_person");
         if(dp)dp.facts.known_person="가족";
       }
+    }
+    if(/이(?:가|를|도)\s?(?:[가-힣]{1,6}\s?){0,2}(?:빠지|빠졌|빠진|부러|깨지|깨졌|흔들|썩)/.test(text)&&!cons.some(x=>x.concept_id==="tooth")){
+      const th=KB.extract_view.find(x=>x.concept_id==="tooth");
+      if(th)cons.push({concept_id:"tooth",facts:liteFacts(text,th),surf:"이"});
+    }
+    if(/(?:남자친구|여자친구|남친|여친|남편|아내|애인)(?:가|이|을|를)?[^.]{0,14}(?:다른|모르는|낯선)\s?(?:여자|남자|사람)/.test(text)&&!cons.some(x=>x.concept_id==="infidelity")){
+      const inf=KB.extract_view.find(x=>x.concept_id==="infidelity");
+      if(inf)cons.push({concept_id:"infidelity",facts:{},surf:"외도"});
     }
     if(/낚시|낚아|낚았|그물/.test(text)&&/고기/.test(text)&&!cons.some(x=>x.concept_id==="fish")){
       const fi=KB.extract_view.find(x=>x.concept_id==="fish");
@@ -1063,13 +1085,17 @@ function liteExtract(text){
   else if(/향하는|향했|가는 중|매달려|버티/.test(text))f.outcome="in_progress";
   if(/무서|두려|공포|놀라|놀랐|소름/.test(text))f.emotion="fear";
   if(/브레이크|통제.{0,4}(불능|상실)|멈출 수 없/.test(text))f.control="lost";
+  if(/떨어지|떨어졌|추락|낙하|굴러 ?떨어|미끄러져 ?떨어/.test(text)&&!/뛰어내|날아올|착지/.test(text)){f.trajectory="down";if(!f.control)f.control="lost";}
   let goal=null;
   const gm=text.match(/([가-힣]{1,8}(?:한테|에게|께))\s*돌아가/)||text.match(/([가-힣]{1,6})(?:으로|로)\s*(?:돌아가|향하)/);
   if(gm)goal={서술:gm[1].trim()+" 돌아가기",status:/도착했|만났|돌아왔/.test(text)?"달성":"진행중"};
   /* 비꿈 입력 휴리스틱 — 기사·상호·노래·쇼핑 등. 판정 대신 안내용 플래그 (2026-10-29 운영자 피드백) */
-  const NONDREAM=/\[[^\]]{2,14}\]|기자|뉴스|칼럼|프로필|나이 |본명|구매|가격|할인|배송|후기|모집|프로그램|어린이집|학부모|학원|강사|클래스|작사|작곡|성경|말씀|목사|설교|극장|개봉|방송|출연|인터뷰|문의|예약|이벤트/;
-  const DREAMSIG=/꿈(?:을|에서|에)? ?(?:꾸|꿨|꾼)|꿈이야기|꿈인데|꿈 ?해몽|나오는 꿈|나온 꿈|[가-힣] 꿈$|꿈이었|꿈에 [가-힣]/;
-  const nondream=NONDREAM.test(text)&&!DREAMSIG.test(text.replace(NONDREAM,""))||(!DREAMSIG.test(text)&&!/꿈/.test(text)&&text.length>30);
+  const NONDREAM=/\[[^\]]{2,40}\]|기자|뉴스|칼럼|프로필|나이 |본명|구매|가격|할인|배송|후기|모집|프로그램|어린이집|학부모|학원|강사|클래스|작사|작곡|성경|말씀|목사|설교|극장|개봉|방송|출연|인터뷰|문의|예약|이벤트|희망|교환|구함|양도|판매합니다|삽니다/;
+  /* 지향형 '꿈꾸다(바라다)'는 꿈 신호가 아니라 비꿈 신호 (2026-10-29 실측: 구판별 검출 0/22 → 신판별 17/19·실꿈 오탐 0) */
+  const ASPIRE=/꿈꾸(?:는|던|며|다|고|기|면|었)|꿈꾼다|꿈[을도] ?(?:향|이루|펼치|키우|좇|품|못|접|포기)|꿈같은|[가-힣]{2,}의 꿈(?=\s*$|\s*[|·,—-])/;
+  const DREAMSIG=/꿈을 ?꿨|꿈 ?꿨|꿈에서|꿈에 [가-힣]|[는은던] 꿈(?=\s*$|[.,!?~]|을|이|인데| ?해몽)|꿈이었|꿈 ?해몽|꿈인데|꿈이야기|태몽/;
+  const sig=DREAMSIG.test(text);
+  const nondream=((NONDREAM.test(text)||ASPIRE.test(text))&&!sig)||(!sig&&!/꿈/.test(text)&&text.length>30);
   return {raw:text,nondream,scenes:[{summary:"간이 분석",facts:f,concepts:cons.slice(0,8)}],
     narrative_context:[],u_notes:[],psych_note:null,goal};
 }
@@ -1083,7 +1109,7 @@ function liteFacts(t,c){
     else if(/받았|받아서|받는|받은/.test(t))f.action="받음";   // '받았'이 줍음으로 가던 오매핑 수정 (imp-005)
     else if(/돌려주|줬|주었/.test(t))f.action="줌";
     else if(/주웠/.test(t))f.action="줍음";
-    else if(/빠졌|빠지/.test(t)&&c.concept_id==="tooth")f.action="빠짐_치아";
+    else if(/빠졌|빠지|빠진|뽑|빼냈|빼는/.test(t)&&c.concept_id==="tooth")f.action="빠짐_치아";
     else if(/물렸|물리는|물리고|물린|물려|물어/.test(t))f.action="물림";
     else if(/할퀴/.test(t))f.action="할큄";
     else if(/들어왔|들어오/.test(t))f.action="진입";
@@ -1098,6 +1124,10 @@ function liteFacts(t,c){
     else if(/입고|입은|입었|입는/.test(t))f.action="입음";
     else if(/안고|안았|품에 안/.test(t))f.action="안음";
     else if(/올라타|타고 (?:가|다|날)|[를을] 타고|[를을] 탔/.test(t))f.action="탐";
+    else if(/오토바이|자전거|스쿠터/.test(t)&&/타|몰|운전/.test(t))f.action="운전함";
+    else if(/먹었|먹는|먹고|먹은|사먹/.test(t))f.action="먹음";
+    else if(/자르|잘랐|잘라|잘리|잘렸|잘린/.test(t))f.action="자름";
+    else if(/죽이|죽였|죽인|때려잡|잡아먹/.test(t))f.action="죽임";
   }
   if(c.facts.includes("state")){
     if(/죽었|죽는|죽어|죽음|사망|자살/.test(t))f.state="죽음";   // 핵심 서사 '죽음' 추출 (imp-006 — "직역해야지")
@@ -1225,7 +1255,8 @@ $("go").onclick=async()=>{
     else { show("v-input"); return; }
   }
   setStep(1);
-  const eng=runEngine(ex);
+  if(ex.nondream&&(ex.scenes[0].concepts||[]).length<1){ /* 비꿈 + 상징 없음 → 판정 대신 안내 (혼합 노출 차단) */ }
+  const eng=ex.nondream?{call:"판정유보",reason:"꿈 이야기로 보이지 않음",evidence:[],balance:0}:runEngine(ex);
   setStep(2);
   const {cards,minority}=pickCards(ex,eng);
   cur={text,ex,eng,cards,minority,swipes:{},idx:0,mode,engineMode:MODE,ts:Date.now()};
@@ -1618,7 +1649,7 @@ function finish(){
     const josa2=(w,a,b)=>{const c=w.charCodeAt(w.length-1);return (c>=0xAC00&&(c-0xAC00)%28>0)?a:b;};
     /* 라벨은 실제 매칭된 단어(surf) 우선 — 반지가 '비녀'로 표기되던 문제 (imp-002, 2026-10-27) */
     const SURF={};try{(cur.ex.scenes||[]).forEach(s2=>(s2.concepts||[]).forEach(c2=>{if(c2.surf&&!SURF[c2.concept_id])SURF[c2.concept_id]=c2.surf;}));}catch(err){}
-    const SURF_FIX={"이빠지":"이빨","바람피":"외도","바람 피":"외도","바람을 피":"외도","바람났":"외도","바람난":"외도","바람나는":"외도","돌아가신":"고인","돌아가셨":"고인","끌려가":"납치","끌려갔":"납치","죽는":"죽음","죽었":"죽음","죽어가":"죽음","피를 흘":"피","피나":"피","싸우":"싸움","싸웠":"싸움","다투":"다툼","아픈":"아픔","아팠":"아픔","아파":"아픔","앓는":"병","앓아":"병"};
+    const SURF_FIX={"이빠지":"이빨","바람피":"외도","바람 피":"외도","바람을 피":"외도","바람났":"외도","바람난":"외도","바람나는":"외도","돌아가신":"고인","돌아가셨":"고인","끌려가":"납치","끌려갔":"납치","죽는":"죽음","죽었":"죽음","죽어가":"죽음","피를 흘":"피","피나":"피","싸우":"싸움","싸웠":"싸움","다투":"다툼","아픈":"아픔","아팠":"아픔","아파":"아픔","앓는":"병","앓아":"병","살려줬":"구조","살려주":"구조","구해줬":"구조","구해주":"구조","구출":"구조","아파":"아픔","암 걸":"병","돌아가시":"고인","죽은":"죽음","먹음":"음식"};
     const lab=x=>{if(!(x&&x.rule.concept))return"결말";const sv=SURF[x.rule.concept];return esc(sv?(SURF_FIX[sv]||sv):cLabel(x.rule.concept));};
     const part=x=>x&&x.match<1?" (꿈의 정황과 완전히 겹치진 않았어요)":"";
     /* 인용 선정 — 조건 전부 일치(match≥1) 우선, 반대편과 같은 상징은 가능하면 회피 (2026-10-08: 같은 '차' 장면을 길·흉 양쪽에 인용하던 문제) */
@@ -1696,8 +1727,8 @@ function finish(){
            단, 중립 '상징 정의'는 방향 단정이 아니라 인용해도 안전 */
         if(b.match<1){
           const sym=e.evidence.filter(x=>x.rule.concept===c2.concept_id&&x.rule.direction==="중립").sort((a,b2)=>b2.score-a.score)[0];
-          if(sym)return `<p class="seg-r"><span class="chip dir-중립">상징</span><b>${esc(cLabel(c2.concept_id))}</b> — ${esc(sym.rule.claim.replace(/\.$/,""))} <span class="gr">· 전개가 더 잡히면 길흉도 가려 드려요</span></p>`;
-          return `<p class="seg-r"><span class="chip grade">참고</span><b>${esc(cLabel(c2.concept_id))}</b> — 전개(어떻게 됐는지)에 따라 길흉이 갈리는 상징이에요. 이번 서술에는 그 전개가 잡히지 않아 판정에 약하게만 반영했어요.</p>`;
+          if(sym)return `<p class="seg-r"><span class="chip dir-중립">상징</span><b>${esc(c2.surf||cLabel(c2.concept_id))}</b> — ${esc(sym.rule.claim.replace(/\.$/,""))} <span class="gr">· 전개가 더 잡히면 길흉도 가려 드려요</span></p>`;
+          return `<p class="seg-r"><span class="chip grade">참고</span><b>${esc(c2.surf||cLabel(c2.concept_id))}</b> — 전개(어떻게 됐는지)에 따라 길흉이 갈리는 상징이에요. 이번 서술에는 그 전개가 잡히지 않아 판정에 약하게만 반영했어요.</p>`;
         }
         return `<p class="seg-r"><span class="chip dir-${b.rule.direction}">${b.rule.direction==="중립"?"상징":b.rule.direction}</span><b>${esc(c2.surf||cLabel(c2.concept_id))}</b> — ${esc(b.rule.claim.replace(/\.$/,""))}</p>`;
       }).filter(Boolean);
