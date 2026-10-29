@@ -144,10 +144,15 @@ async function loadQA(){
     let sc; try{sc=JSON.parse(b64d(sj.content));}catch(e){continue;}
     for(const it of (Array.isArray(sc)?sc:[])){
       const q=QA.find(x=>x.date===dt&&x.r.case_id===it.case_id);
-      if(q){q.agent=it;
-        const v=Object.values(it.scores||{});
-        q.flag=(v.length&&Math.min(...v)<=2)||((it.tags||[]).some(t=>t!=="testset-noise"&&t!=="prose"));}
+      if(q)q.agent=it;
     }
+  }
+  // 날짜별 최악 3건만 검수 요청 — 전수 검수 불가, 운영자는 맛 보정만 (2026-10-29)
+  for(const dt of dates){
+    const day=QA.filter(x=>x.date===dt);
+    const sum=x=>{const v=Object.values((x.agent&&x.agent.scores)||{});return v.length?v.reduce((a,b)=>a+b,0):-1;}; // 채점 없으면 최우선
+    day.sort((a,b)=>sum(a)-sum(b));
+    day.forEach((x,i)=>x.flag=i<3);
   }
   const fb=await gh("kb/_data/qa/feedback.json");
   QAFB={}; QAFBSHA=null;
