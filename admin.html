@@ -137,6 +137,18 @@ async function loadQA(){
       QA.push({id:date+"#"+r.case_id,date,r});
     }
   }
+  // 데일리 에이전트 채점 부착 — 운영자에겐 결함 플래그분만 기본 표시 (2026-10-29: 매일 10건 리필로 전수 검수 불가)
+  const dates=[...new Set(QA.map(x=>x.date))];
+  for(const dt of dates){
+    const sj=await gh("kb/_data/qa/daily/"+dt+".json"); if(!sj)continue;
+    let sc; try{sc=JSON.parse(b64d(sj.content));}catch(e){continue;}
+    for(const it of (Array.isArray(sc)?sc:[])){
+      const q=QA.find(x=>x.date===dt&&x.r.case_id===it.case_id);
+      if(q){q.agent=it;
+        const v=Object.values(it.scores||{});
+        q.flag=(v.length&&Math.min(...v)<=2)||((it.tags||[]).some(t=>t!=="testset-noise"&&t!=="prose"));}
+    }
+  }
   const fb=await gh("kb/_data/qa/feedback.json");
   QAFB={}; QAFBSHA=null;
   if(fb){QAFBSHA=fb.sha; try{for(const it of JSON.parse(b64d(fb.content)).items||[])QAFB[it.id]=it;}catch(e){}}
@@ -187,6 +199,7 @@ function qaCard(x){
       ${(r.추출상징||[]).map(s=>`<span class="chip">${esc(s)}</span>`).join("")}</div>
     <div class="dream">${esc(r.text)}</div>
     ${ev.length?`<div class="ev">${ev.join("<br>")}</div>`:'<div class="ev src">인용된 근거 없음</div>'}
+    ${x.agent&&x.agent.한줄진단?`<div class="src">🤖 ${esc(x.agent.한줄진단)}${x.agent.tags&&x.agent.tags.length?" · "+esc(x.agent.tags.join(","))+"":""}</div>`:""}
     <div class="btns">
       <button class="ok ${p&&p.v==="정확"?"on":""}" onclick="qmark('${x.id}','정확')">제대로 나옴</button>
       <button class="fix ${p&&p.v==="수정"?"on":""}" onclick="qmark('${x.id}','수정')">수정 필요</button>
@@ -201,16 +214,22 @@ function render(){
   $("tab-imp").classList.toggle("on",TAB==="imp");
   let h="";
   if(TAB==="qa"){
-    $("tab-hint").innerHTML="매일 자동 생성된 조합 꿈 10개를 온밤이 실제로 판정한 결과예요. <b>답이 와닿는지</b>만 봐주면 됩니다 — '수정 필요'에 남긴 메모는 보정 기준이 되어 다음 개선에 반영돼요.";
+    $("tab-hint").innerHTML="매일 생성되는 꿈 10건 중 <b>검수 에이전트가 결함으로 플래그한 것만</b> 보여드려요(통과분은 아래 버튼으로). '수정 필요' 메모는 보정 기준이 되어 다음 개선에 반영돼요.";
     const undone=QA.filter(x=>!QAFB[x.id]);
-    $("stats").innerHTML=`<span class="stat"><b>${undone.length}</b>검수 대기</span>
-      <span class="stat"><b>${Object.keys(QAFB).length}</b>검수 완료</span>
-      <span class="stat">최근 7일 <b>${QA.length}</b>건</span>`;
-    const by={}; for(const x of undone)(by[x.date]??=[]).push(x);
+    const flagged=undone.filter(x=>x.flag||!x.agent), passed=undone.filter(x=>!x.flag&&x.agent);
+    $("stats").innerHTML=`<span class="stat"><b>${flagged.length}</b>검수 요청</span>
+      <span class="stat"><b>${passed.length}</b>에이전트 통과</span>
+      <span class="stat"><b>${Object.keys(QAFB).length}</b>검수 완료</span>`;
+    const show=window.__showAll?undone:flagged;
+    const by={}; for(const x of show)(by[x.date]??=[]).push(x);
     for(const date of Object.keys(by).sort().reverse()){
-      h+=`<p class="day">${date} — 오늘의 꿈 ${by[date].length}건</p>`;
+      h+=`<p class="day">${date} — ${by[date].length}건</p>`;
       for(const x of by[date])h+=qaCard(x);
     }
+    if(passed.length&&!window.__showAll)
+      h+=`<div class="empty" style="padding:16px 0"><button onclick="window.__showAll=true;render()">에이전트 통과 ${passed.length}건도 보기</button></div>`;
+    else if(window.__showAll)
+      h+=`<div class="empty" style="padding:16px 0"><button onclick="window.__showAll=false;render()">결함 플래그만 보기</button></div>`;
     h=h||'<p class="empty">검수할 답변이 없어요 🌙<br>내일 아침 파이프라인이 돌면 새 꿈 10건이 올라옵니다.</p>';
   }else if(TAB==="imp"){
     $("tab-hint").innerHTML="QA 검수(에이전트 채점 + 운영자 피드백)에서 나온 <b>설계 수정안</b>이에요. 승인하면 반영 작업 때 게이트(골든셋 보전)를 거쳐 적용됩니다. ⚠ 판정식 항목은 승인 = \'검토 착수\'예요.";
