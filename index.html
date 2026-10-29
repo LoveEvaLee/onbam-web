@@ -1061,12 +1061,16 @@ function liteExtract(text){
   else if(/도망쳤|벗어났|빠져나(왔|간)/.test(text))f.outcome="escaped";
   else if(/멈췄|끝났|해결|되찾|다시 찾|찾았/.test(text))f.outcome="resolved";
   else if(/향하는|향했|가는 중|매달려|버티/.test(text))f.outcome="in_progress";
-  if(/무서|두려|공포/.test(text))f.emotion="fear";
+  if(/무서|두려|공포|놀라|놀랐|소름/.test(text))f.emotion="fear";
   if(/브레이크|통제.{0,4}(불능|상실)|멈출 수 없/.test(text))f.control="lost";
   let goal=null;
   const gm=text.match(/([가-힣]{1,8}(?:한테|에게|께))\s*돌아가/)||text.match(/([가-힣]{1,6})(?:으로|로)\s*(?:돌아가|향하)/);
   if(gm)goal={서술:gm[1].trim()+" 돌아가기",status:/도착했|만났|돌아왔/.test(text)?"달성":"진행중"};
-  return {raw:text,scenes:[{summary:"간이 분석",facts:f,concepts:cons.slice(0,8)}],
+  /* 비꿈 입력 휴리스틱 — 기사·상호·노래·쇼핑 등. 판정 대신 안내용 플래그 (2026-10-29 운영자 피드백) */
+  const NONDREAM=/\[[^\]]{2,14}\]|기자|뉴스|칼럼|프로필|나이 |본명|구매|가격|할인|배송|후기|모집|프로그램|어린이집|학부모|학원|강사|클래스|작사|작곡|성경|말씀|목사|설교|극장|개봉|방송|출연|인터뷰|문의|예약|이벤트/;
+  const DREAMSIG=/꿈(?:을|에서|에)? ?(?:꾸|꿨|꾼)|꿈이야기|꿈인데|꿈 ?해몽|나오는 꿈|나온 꿈|[가-힣] 꿈$|꿈이었|꿈에 [가-힣]/;
+  const nondream=NONDREAM.test(text)&&!DREAMSIG.test(text.replace(NONDREAM,""))||(!DREAMSIG.test(text)&&!/꿈/.test(text)&&text.length>30);
+  return {raw:text,nondream,scenes:[{summary:"간이 분석",facts:f,concepts:cons.slice(0,8)}],
     narrative_context:[],u_notes:[],psych_note:null,goal};
 }
 function liteFacts(t,c){
@@ -1080,7 +1084,7 @@ function liteFacts(t,c){
     else if(/돌려주|줬|주었/.test(t))f.action="줌";
     else if(/주웠/.test(t))f.action="줍음";
     else if(/빠졌|빠지/.test(t)&&c.concept_id==="tooth")f.action="빠짐_치아";
-    else if(/물렸|물리는|물린|물려|물어/.test(t))f.action="물림";
+    else if(/물렸|물리는|물리고|물린|물려|물어/.test(t))f.action="물림";
     else if(/할퀴/.test(t))f.action="할큄";
     else if(/들어왔|들어오/.test(t))f.action="진입";
     else if(/추락|떨어졌|떨어지/.test(t))f.action="떨어짐";
@@ -1708,6 +1712,8 @@ function finish(){
       <div id="approx-out">${MODE==="full"
         ?'<p class="hint">자료들이 갈리는 지점을 정리하는 중…</p>'
         :(()=>{const cs=[...new Set(cur.ex.scenes.flatMap(s2=>s2.concepts.map(c2=>c2.concept_id)))];
+           if(cur.ex&&cur.ex.nondream)
+             return '<p class="ins-p">적어주신 글이 <b>꿈 이야기가 아닌 것 같아요</b> — 기사·노래 제목·안내문처럼 보여요. 꾸신 꿈을 "~하는 꿈을 꿨어" 형태로 적어주시면 판정해 드릴게요.</p>';
            return cs.length
              ?`<p class="ins-p">이 꿈에서 <b>${cs.map(id=>esc(cLabel(id))).join(" · ")}</b>${josaKG(cLabel(cs[0]))==="이"?"을":"를"} 읽어냈지만, 이 전개(행동·결말)에 대한 검증된 근거가 아직 얇아 판정을 정하지 않았어요. 아래 버튼으로 상징별 전통 해석 전체를 사전처럼 볼 수 있어요.</p>`
                +cs.slice(0,3).map(id=>`<button class="btn soft" style="margin-top:9px" onclick="document.getElementById('dream').value='${esc(cLabel(id))} 꿈';document.getElementById('go').click()">${esc(cLabel(id))} 사전 보기</button>`).join(" ")
