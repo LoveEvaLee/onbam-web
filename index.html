@@ -1052,6 +1052,20 @@ function liteExtract(text){
     const hit=c.aliases.find(has);
     if(hit) cons.push({concept_id:c.concept_id,facts:liteFacts(text,c),surf:hit});
   }
+  /* 실명 사전 — 연예인·유명인 이름 인지 (KB.names, 2026-11-02 유경 지시).
+     한글 경계(앞) + 호칭·조사 또는 비한글 경계(뒤)로만 매칭 — '덴마크/마크업'의 '마크',
+     '태연하게'의 '태연' 같은 부분문자열 오탐을 차단한다. 매칭된 이름은 surf로 노출. */
+  try{
+    for(const nm of (KB.names||[])){
+      if(!text.includes(nm.n))continue;
+      const re=new RegExp("(^|[^가-힣])"+nm.n+"(?=(?:언니|오빠|누나|형아?|님|씨)?이?(?:랑|며|하고|가|을|를|은|는|와|과|도|만|야|아|한테|에게|께서|께|처럼|보다|부터|까지)?(?:[^가-힣]|$))");
+      if(!re.test(text))continue;
+      const nc=KB.extract_view.find(x=>x.concept_id===nm.c);
+      const ex0=cons.find(x=>x.concept_id===nm.c);
+      if(ex0){if(!ex0.named){ex0.surf=nm.n;ex0.named=1;}}
+      else cons.push({concept_id:nm.c,facts:nc?liteFacts(text,nc):{},surf:nm.n,named:1});
+    }
+  }catch(err){}
   /* 후처리 — 고인+친족 결합, 낚시 고기→물고기 (qa-076·064) */
   try{
     if(/돌아가시|돌아가신|돌아가셨|돌아가셔/.test(text)){
