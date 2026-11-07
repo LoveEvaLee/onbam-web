@@ -1201,30 +1201,46 @@ function runEngine(ex){
     if(!byFam[k]||m.score>byFam[k].score)byFam[k]=m;
   }
   const ev=Object.values(byFam);
-  let P=0,N=0,Z=0;
-  for(const e of ev){ if(e.rule.direction==="길")P+=e.score;
-    else if(e.rule.direction==="흉")N+=e.score; else Z+=e.score; }
-  const directional=P+N,total=P+N+Z,T=KB.scoring.thresholds;
+  const T=KB.scoring.thresholds;
+  // V4' (2026-11-07 유경 승인): 방향 질량은 부분일치를 ×0.25 감쇠 — partial 잔음이 모든 꿈을 혼합으로 만들던 쏠림 제거.
+  // 유보 판단용 총량(total)은 기존대로 전량 유지.
+  const damp=T.partial_damp??0.25;
+  let P=0,N=0,Z=0,Pf=0,Nf=0;
+  for(const e of ev){
+    if(e.rule.direction==="길"){Pf+=e.score;P+=e.match===1?e.score:e.score*damp;}
+    else if(e.rule.direction==="흉"){Nf+=e.score;N+=e.match===1?e.score:e.score*damp;}
+    else Z+=e.score; }
+  const directional=P+N,total=Pf+Nf+Z;
   // 보수 가드는 family 병합 '전' 매칭 수 기준 — 병합은 점수 인플레 방지용이지 근거 개수 부정이 아님
   const bEff=matches.filter(m=>m.rule.direction!=="중립"&&m.score>=0.25&&m.match>=0.5).length;
   const aExact=matches.some(m=>m.rule.grade==="A"&&!m.rule.provisional&&m.match===1);
   // score-v2.1 (2026-10-02 운영자 승인): 완전일치(exact) 방향성 근거 1개면 확정 허용 — 부분일치만으론 여전히 유보
   const fullExact=matches.filter(m=>m.rule.direction!=="중립"&&m.match===1&&m.score>=0.25).length;
   const guard=aExact||bEff>=2||fullExact>=1;
-  let call,reason,balance=0;
+  let call,reason,balance=0,weak=null;
   if(total<=T.total_min){call="판정유보";reason="근거 부족";}
   else if(directional===0){call="중립";reason="방향성 없는 근거";}
-  else if(directional/total<T.directional_ratio_min){call="중립";reason="중립 근거 우세";}
+  // V4': 상대비율(ratio) 중립 → 방향 절대질량 바닥 — 중립 질량이 분모에서 방향을 누르던 구조 제거
+  else if(directional<(T.neutral_floor??0.3)){call="중립";reason="방향 질량 부족";}
   else{
     balance=(P-N)/directional;
     if(balance>=T.balance)  {call=guard?"길몽":"판정유보";reason=guard?"길 방향 우세":"근거가 얇아 확정 보류";}
     else if(balance<=-T.balance){call=guard?"흉몽":"판정유보";reason=guard?"흉 방향 우세":"근거가 얇아 확정 보류";}
-    else if(P>0&&N>0){call="혼합";reason="길·흉 근거가 함께 있음";}
+    else if(P>0&&N>0){
+      // V4' 소수측 접기: 완전일치 0 + 감쇠 질량<바닥인 소수 방향은 혼합을 못 만든다 — 다수 방향으로 확정, 신호는 '약하게 잡힘' 표시
+      const minorDir=P>=N?"흉":"길", minorMass=Math.min(P,N);
+      const minorExact=matches.some(m=>m.rule.direction===minorDir&&m.match===1);
+      if(!minorExact&&minorMass<(T.minor_fold_floor??0.3)){
+        weak=minorDir;
+        call=guard?(P>=N?"길몽":"흉몽"):"판정유보";
+        reason=guard?(P>=N?"길":"흉")+" 방향 우세 — "+minorDir+" 신호는 약하게 잡혀 접음":"근거가 얇아 확정 보류";
+      }else{call="혼합";reason="길·흉 근거가 함께 있음";}
+    }
     else {call="중립";reason="방향 근거 미약";}
   }
   return {evidence:ev,P:+P.toFixed(2),N:+N.toFixed(2),Z:+Z.toFixed(2),
     directional:+directional.toFixed(2),total:+total.toFixed(2),
-    balance:+balance.toFixed(2),call,reason};
+    balance:+balance.toFixed(2),call,reason,weak};
 }
 /* 카드 선정 — 결정적 규칙 (판정은 표시 카드와 무관, 전체 근거 기준) */
 function pickCards(ex,eng){
