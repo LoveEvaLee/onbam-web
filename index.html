@@ -1010,6 +1010,9 @@ function liteExtract(text){
   const ONE_SKIP={"먹":1,"널":1,"분":1,"신":1,"낫":1,"입":1,"함":1,"이":1}; // 동사·일상어 충돌(먹는/널/5분/신다/함께) — 2자 별칭으로만
   /* 붙여쓰기 보정 — 수식어+상징이 붙은 표기('빨간뱀')를 띄워 1자 경계 매칭이 닿게 (imp-004, 2026-10-27) */
   text=text.replace(/(빨간|파란|노란|하얀|까만|검은|커다란|조그만|새끼)(?=[가-힣])/g,"$1 ").replace(/ㅈㅅ/g,"자살");
+  /* ② 부정어 가드(2026-11-11 유경 승인): '안/못/않+죽-', '죽지 않-'은 죽음 사건이 아니다 —
+     '계속 안죽어서'가 죽음으로 추출돼 재생 길 rule이 발화하던 오염 차단. 매칭에만 쓰고 표시용 raw는 유지. */
+  const mt=text.replace(/(?:안|못|않)\s?죽|죽\s?지\s?[를도가은는]?\s?(?:않|못|말)/g,m=>m.replace(/죽/g,"〇"));
   /* '약 30분'·'약 세 시간' = 대략(約) 용법 — 숫자(디지트는 즉시, 한글 수사는 단위 동반)가 이어지는 구간을 지우고 나서 약(藥)을 매칭 (2026-10-02) */
   const ONE_GUARD={"약":/약\s*(?:[0-9０-９]|(?:한|두|세|네|다섯|여섯|일곱|여덟|아홉|열|스물|서른|몇|수십|수백)\s*(?:분|시간|초|일|주|달|개월|년|미터|킬로|리|명|마리|개|번|차례|걸음|살|평|%))/g,
     "검":/검은|검게|검디/g, // '검은 연기'의 검정(形)이 검(劍)+조사 '은'으로 오인되던 것 차단 (2026-10-08 실측)
@@ -1023,7 +1026,7 @@ function liteExtract(text){
     "말":/(?:그|이|저|한|두|무슨|어떤|다른|좋은|나쁜|막|거짓|헛|빈|혼잣|아무)\s?말|말(?:을|도|이)?\s?(?:안\s?)?(?:했|하|한|해|걸|씀|못|지켰|지키|들었|듣)/g, // 발화 ≠ 말(馬)
     "꿀":/못\s?꿀|꿀\s?(?:줄|수)|꿀꿈/g}; // '꿈도 못 꿀' ≠ 꿀(蜜)
   const one=a=>{if(ONE_SKIP[a])return false;
-    const t=ONE_GUARD[a]?text.replace(ONE_GUARD[a],""):text;
+    const t=ONE_GUARD[a]?mt.replace(ONE_GUARD[a],""):mt;
     return new RegExp("(^|[^가-힣])"+a+"(?=(?:꿈|보는|봤|본|나오|나왔|나와|위에|안에|밑에|옆에)?(?:이랑|이며|하고|이|가|을|를|은|는|에서|에선|에는|에|의|도|만|랑|으로|로|한테|에게|께서|께|부터|까지|처럼|보다|조차|마저)?(?:[^가-힣]|$))").test(t);};  // 상징+꿈/동사어간/위치 합성 허용 (imp-004·qa-050·080)
   /* 2자 이상 별칭 가드 — '그대로/뜻대로'의 '대로'가 大路로 오인되던 것 차단 (2026-10-10 실측: 별장 꿈에 '사방 큰길' 인용) */
   /* 2자+ 오탐 가드 2차 (imp-003, 2026-10-27 QA 실측) */
@@ -1047,7 +1050,7 @@ function liteExtract(text){
     "새우":/새우잠/g}; 
   const has=a=>{
     if(a==="고기"&&/낚시|낚아|낚았|낚는|그물|물고기/.test(text))return false; // 낚시 맥락의 고기=물고기 (qa-064)
-    return a.length>1?(MULTI_GUARD[a]?text.replace(MULTI_GUARD[a],""):text).includes(a):one(a);};
+    return a.length>1?(MULTI_GUARD[a]?mt.replace(MULTI_GUARD[a],""):mt).includes(a):one(a);};
   for(const c of KB.extract_view){
     const hit=c.aliases.find(has);
     if(hit) cons.push({concept_id:c.concept_id,facts:liteFacts(text,c),surf:hit});
@@ -1109,7 +1112,10 @@ function liteExtract(text){
   const ASPIRE=/꿈꾸(?:는|던|며|다|고|기|면|었)|꿈꾼다|꿈[을도] ?(?:향|이루|펼치|키우|좇|품|못|접|포기)|꿈같은|[가-힣]{2,}의 꿈(?=\s*$|\s*[|·,—-])/;
   const DREAMSIG=/꿈을 ?꿨|꿈 ?꿨|꿈에서|꿈에 [가-힣]|[는은던] 꿈(?=\s*$|[.,!?~]|을|이|인데| ?해몽)|꿈이었|꿈 ?해몽|꿈인데|꿈이야기|태몽/;
   const sig=DREAMSIG.test(text);
-  const nondream=((NONDREAM.test(text)||ASPIRE.test(text))&&!sig)||(!sig&&!/꿈/.test(text)&&text.length>30);
+  /* ① (2026-11-11 유경 승인): '꿈 단어 없음=비꿈' 폴백 제거 — 해몽 입력창에선 기본 전제가 꿈이다.
+     '벽에 개미들이…'처럼 꿈 단어 없이 장면부터 서술한 실꿈이 유보로 빠지던 오탐 봉합.
+     비꿈 처리는 NONDREAM·ASPIRE 양성 신호가 있을 때만(수집물 노이즈는 이 패턴이 계속 거른다). */
+  const nondream=(NONDREAM.test(text)||ASPIRE.test(text))&&!sig;
   return {raw:text,nondream,scenes:[{summary:"간이 분석",facts:f,concepts:cons.slice(0,8)}],
     narrative_context:[],u_notes:[],psych_note:null,goal};
 }
@@ -1170,8 +1176,12 @@ function evalCond(cond,sceneFacts,instFacts){
   let miss=0;
   for(const k of keys){
     const v=k.startsWith("scene.")?sceneFacts[k.slice(6)]:(instFacts?instFacts[k]:undefined);
+    const want=cond[k];
+    /* V4''ⓒ(2026-11-11 유경 승인): 부정 조건 '!값' — 그 값이면 모순(0), 아니면(미서술 포함) 충족.
+       '이빨 빠짐' 흉을 결말 미서술(실꿈 기본값)에서 발화시키되 '새 이가 남'(resolved) 전개에선 제외하는 최소 확장 */
+    if(typeof want==="string"&&want.charCodeAt(0)===33){ if(v!==undefined&&v===want.slice(1))return 0; continue; }
     if(v===undefined)miss++;
-    else if(v!==cond[k])return 0;           // contradiction
+    else if(v!==want)return 0;           // contradiction
   }
   return miss===0?1.0:0.5;                   // exact / partial
 }
@@ -1205,10 +1215,16 @@ function runEngine(ex){
   // V4' (2026-11-07 유경 승인): 방향 질량은 부분일치를 ×0.25 감쇠 — partial 잔음이 모든 꿈을 혼합으로 만들던 쏠림 제거.
   // 유보 판단용 총량(total)은 기존대로 전량 유지.
   const damp=T.partial_damp??0.25;
+  // V4''ⓑ (2026-11-11 유경 승인): partial 잔음 cap — concept×방향당 최강 1건만 방향 질량에 반영.
+  // 상징 4~7개 꿈에서 partial 조각(0.0625×n)이 쌓여 접기 바닥을 우회하던 억지 혼합 차단. 유보 판단용 total엔 전량 유지.
+  const pKey=e=>(e.rule.concept||"_"+e.rule.family)+"|"+e.rule.direction;
+  const pBest={};
+  for(const e of ev){ if(e.match<1&&(e.rule.direction==="길"||e.rule.direction==="흉")){
+    const k=pKey(e); if(!pBest[k]||e.score>pBest[k].score)pBest[k]=e; } }
   let P=0,N=0,Z=0,Pf=0,Nf=0;
   for(const e of ev){
-    if(e.rule.direction==="길"){Pf+=e.score;P+=e.match===1?e.score:e.score*damp;}
-    else if(e.rule.direction==="흉"){Nf+=e.score;N+=e.match===1?e.score:e.score*damp;}
+    if(e.rule.direction==="길"){Pf+=e.score;P+=e.match===1?e.score:(pBest[pKey(e)]===e?e.score*damp:0);}
+    else if(e.rule.direction==="흉"){Nf+=e.score;N+=e.match===1?e.score:(pBest[pKey(e)]===e?e.score*damp:0);}
     else Z+=e.score; }
   const directional=P+N,total=Pf+Nf+Z;
   // 보수 가드는 family 병합 '전' 매칭 수 기준 — 병합은 점수 인플레 방지용이지 근거 개수 부정이 아님
@@ -1217,26 +1233,33 @@ function runEngine(ex){
   // score-v2.1 (2026-10-02 운영자 승인): 완전일치(exact) 방향성 근거 1개면 확정 허용 — 부분일치만으론 여전히 유보
   const fullExact=matches.filter(m=>m.rule.direction!=="중립"&&m.match===1&&m.score>=0.25).length;
   const guard=aExact||bEff>=2||fullExact>=1;
+  // V4''ⓒ (2026-11-11 유경 승인): 행동·결말이 서술된 사건 꿈은 '일상의 잔상'(중립)으로 뭉개지 않는다 —
+  // 근거 조건이 안 겹치면 중립 대신 유보(참고 해몽 폴백)가 정직. '이빨 빠지는 꿈'이 중립으로 빠지던 결함 봉합.
+  const acted=ex.scenes.some(s=>(s.facts&&(s.facts.outcome||s.facts.trajectory))||(s.concepts||[]).some(c=>c.facts&&c.facts.action));
+  const NEU_HOLD="사건 서술은 뚜렷한데 근거 조건이 덜 겹침";
   let call,reason,balance=0,weak=null;
   if(total<=T.total_min){call="판정유보";reason="근거 부족";}
-  else if(directional===0){call="중립";reason="방향성 없는 근거";}
+  else if(directional===0){call=acted?"판정유보":"중립";reason=acted?NEU_HOLD:"방향성 없는 근거";}
   // V4': 상대비율(ratio) 중립 → 방향 절대질량 바닥 — 중립 질량이 분모에서 방향을 누르던 구조 제거
-  else if(directional<(T.neutral_floor??0.3)){call="중립";reason="방향 질량 부족";}
+  else if(directional<(T.neutral_floor??0.3)){call=acted?"판정유보":"중립";reason=acted?NEU_HOLD:"방향 질량 부족";}
   else{
     balance=(P-N)/directional;
     if(balance>=T.balance)  {call=guard?"길몽":"판정유보";reason=guard?"길 방향 우세":"근거가 얇아 확정 보류";}
     else if(balance<=-T.balance){call=guard?"흉몽":"판정유보";reason=guard?"흉 방향 우세":"근거가 얇아 확정 보류";}
     else if(P>0&&N>0){
       // V4' 소수측 접기: 완전일치 0 + 감쇠 질량<바닥인 소수 방향은 혼합을 못 만든다 — 다수 방향으로 확정, 신호는 '약하게 잡힘' 표시
-      const minorDir=P>=N?"흉":"길", minorMass=Math.min(P,N);
+      // V4''ⓐ (2026-11-11 유경 승인): 접기는 다수측 완전일치 ≥1일 때만 — 양쪽 다 partial뿐인 꿈이
+      // 접기로 길/흉 확정되던 역전 사고('어금니 빠지고 피=길몽') 차단. 다수측도 완전일치가 없으면 혼합 유지.
+      const minorDir=P>=N?"흉":"길", majorDir=P>=N?"길":"흉", minorMass=Math.min(P,N);
       const minorExact=matches.some(m=>m.rule.direction===minorDir&&m.match===1);
-      if(!minorExact&&minorMass<(T.minor_fold_floor??0.3)){
+      const majorExact=matches.some(m=>m.rule.direction===majorDir&&m.match===1);
+      if(!minorExact&&majorExact&&minorMass<(T.minor_fold_floor??0.3)){
         weak=minorDir;
         call=guard?(P>=N?"길몽":"흉몽"):"판정유보";
         reason=guard?(P>=N?"길":"흉")+" 방향 우세 — "+minorDir+" 신호는 약하게 잡혀 접음":"근거가 얇아 확정 보류";
       }else{call="혼합";reason="길·흉 근거가 함께 있음";}
     }
-    else {call="중립";reason="방향 근거 미약";}
+    else {call=acted?"판정유보":"중립";reason=acted?NEU_HOLD:"방향 근거 미약";}
   }
   return {evidence:ev,P:+P.toFixed(2),N:+N.toFixed(2),Z:+Z.toFixed(2),
     directional:+directional.toFixed(2),total:+total.toFixed(2),
@@ -1689,20 +1712,41 @@ function finish(){
     const extraOf=used=>{const pool=e.evidence.filter(x=>x.match>=1&&x.rule.concept&&!used.has(x.rule.concept));
       return pool.sort((a,b)=>b.score-a.score)[0];};
     const extraLine=x=>x?` 함께 잡힌 ${lab(x)} 장면은 “${cl(x)}”${josa2(cl(x),"이라는","라는")} 읽기도 있어요.`:"";
+    /* ③ 5단 구조(2026-11-11 유경 승인): 전통 두 갈래 → 이 꿈의 특이점 → 심리 노트 → 마무리 질문.
+       재료는 매칭 근거와 추출 facts뿐 — 문장만 조립하고 판정·내용은 만들지 않는다(관찰 서술만, 인과 단정 금지). */
+    const sf=((cur.ex.scenes||[])[0]||{}).facts||{};
+    const traits=[];
+    if(sf.outcome==="unresolved")traits.push("해결 장면 없이 이어진 점");
+    else if(sf.outcome==="in_progress")traits.push("끝을 보지 못하고 깬 점");
+    else if(sf.outcome==="resolved")traits.push("꿈 안에서 매듭이 지어진 점");
+    else if(sf.outcome==="escaped")traits.push("스스로 벗어난 점");
+    if(sf.control==="lost")traits.push("뜻대로 되지 않은 점");
+    if(sf.emotion==="fear")traits.push("무서움이 짙게 남은 점");
+    const traitLine=traits.length?` 이번 꿈에서 도드라진 건 ${traits.slice(0,2).join("과 ")}이었어요.`:"";
+    const psych=(sf.control==="lost"||sf.outcome==="unresolved"||sf.outcome==="in_progress")
+      ?" 심리적으로는, 애쓰는 만큼 줄지 않는다고 느끼는 요즘 일이 꿈에 배어 나온 걸 수도 있어요."
+      :(sf.emotion==="fear"?" 심리적으로는, 요즘 마음을 누르던 긴장이 꿈으로 새어 나온 걸 수도 있어요.":"");
+    const ask=(sf.control==="lost"||sf.outcome==="unresolved")
+      ?" 요즘 손은 가는데 끝이 안 보이는 일이 있다면 — 방법을 바꿔보라는 신호 정도로 받아들이면 충분해요."
+      :"";
     if(e.call==="길몽"){
       const g1=pickQ(G,null),ex2=extraOf(new Set([g1&&g1.rule.concept]));
       const gQ=g1&&g1.match>=1?`전통적으로 “${cl(g1)}”${josa2(cl(g1),"이라고","라고")} 봐요.`:"구체적인 읽기는 조건이 다 겹치지 않아 아껴둘게요.";
+      /* ⓓ(2026-11-11 승인): 반대편 '장면' 언급은 완전일치가 실제로 있을 때만 — 없던 장면을 있었던 것처럼 말하지 않는다 */
       return `꿈의 중심에 있던 ${josa(lab(g1),"이","가")} 좋은 신호로 읽혔어요. ${gQ}`
-        +(B.length?" 마음에 걸릴 만한 장면도 있었지만, 좋은 신호의 무게가 더 컸어요.":"")
-        +extraLine(ex2)
+        +(B.some(x=>x.match>=1)?" 마음에 걸릴 만한 장면도 있었지만, 좋은 신호의 무게가 더 컸어요."
+          :(B.length?" 조심 쪽 신호도 살짝 스쳤지만 꿈의 정황과 겹침이 약해 접어뒀어요.":""))
+        +extraLine(ex2)+traitLine+psych
         +" 오늘은 어깨 펴고 다녀도 되는 꿈이에요.";
     }
     if(e.call==="흉몽"){
-      const b1=pickQ(B,null);
+      const b1=pickQ(B,null),ex2=extraOf(new Set([b1&&b1.rule.concept]));
       const bQ=b1&&b1.match>=1?`전통적으로 “${cl(b1)}”${josa2(cl(b1),"이라고","라고")} 봐요.`:"구체적인 읽기는 조건이 다 겹치지 않아 아껴둘게요.";
       return `${josa(lab(b1),"이","가")} 조심하라는 신호로 읽혔어요. ${bQ}`
-        +(G.length?" 좋게 읽히는 장면도 있었지만 무게는 조심 쪽이었어요.":"")
-        +" 나쁜 일이 정해졌다는 뜻은 아니에요 — 요즘 마음 쓰이던 일이 있다면 한 번 점검해 보라는 정도로 받아들이면 충분해요.";
+        +(G.some(x=>x.match>=1)?" 좋게 읽히는 장면도 있었지만 무게는 조심 쪽이었어요."
+          :(G.length?" 좋은 쪽 신호도 살짝 스쳤지만 겹침이 약해 세게 반영하지 않았어요.":""))
+        +extraLine(ex2)+traitLine+psych
+        +(ask||" 나쁜 일이 정해졌다는 뜻은 아니에요 — 요즘 마음 쓰이던 일이 있다면 한 번 점검해 보라는 정도로 받아들이면 충분해요.");
     }
     if(e.call==="혼합"){
       const lean=e.balance>0.15?" 굳이 저울을 보면 좋은 쪽이 조금 더 무거웠어요."
@@ -1711,7 +1755,7 @@ function finish(){
       /* 같은 상징 갈림 분기도 완전일치만 인용 — partial 우회로 쌩뚱 인용되던 경로 봉쇄 (imp-001, 2026-10-27) */
       if(g1&&b1&&g1.rule.concept&&g1.rule.concept===b1.rule.concept){
         if(g1.match>=1&&b1.match>=1)
-          return `이번 꿈의 ${lab(g1)} 장면을 두고 전통 자료의 읽기가 갈려요 — 좋게는 “${cl(g1)}”, 조심스럽게는 “${cl(b1)}”.${lean} 좋은 흐름과 조심할 지점을 같이 품은 꿈으로 보면 돼요.`;
+          return `이번 꿈의 ${lab(g1)} 장면을 두고 전통 자료의 읽기가 갈려요 — 좋게는 “${cl(g1)}”, 조심스럽게는 “${cl(b1)}”.${traitLine}${lean}${psych}${ask||" 좋은 흐름과 조심할 지점을 같이 품은 꿈으로 보면 돼요."}`;
         const full=g1.match>=1?g1:(b1.match>=1?b1:null);
         if(full){const dirw=full===g1?"좋은":"조심할";
           return `이번 꿈의 ${lab(full)} 장면은 “${cl(full)}”${josa2(cl(full),"으로","로")} 읽혀요 — ${dirw} 신호 쪽이에요. 반대 방향 읽기도 있는 상징이지만 이번 전개와는 조건이 겹치지 않아 세게 반영하지 않았어요.${lean}`;}
@@ -1720,9 +1764,15 @@ function finish(){
       const ex2=extraOf(new Set([g1&&g1.rule.concept,b1&&b1.rule.concept]));
       /* partial 근거는 인용하지 않는다 — 안 겪은 전개("가족을 잃어버리고…")가 단정 인용되던 문제 (2026-10-10) */
       const gF=g1&&g1.match>=1,bF=b1&&b1.match>=1;
+      /* ③ 두 갈래 프레임: 양쪽 다 완전일치면 '전통이 두 갈래로 읽는다'로 묶어 제시 — 나열이 아니라 갈래 구도 */
+      if(gF&&bF)
+        return `전통 해몽에서 이번 꿈의 장면들은 두 갈래로 읽혀요 — 좋게는 ${lab(g1)} 쪽에서 “${cl(g1)}”, 조심스럽게는 ${lab(b1)} 쪽에서 “${cl(b1)}”.`
+          +traitLine+lean+psych+extraLine(ex2)
+          +(ask||" 좋은 흐름과 조심할 지점을 같이 품은 꿈으로 보면 돼요.");
       const gS=gF?`${lab(g1)} 장면은 “${cl(g1)}”${josa2(cl(g1),"으로","로")} 읽혀요`:"좋은 신호도 잡혔지만 꿈의 정황과 완전히 겹치진 않아 약하게만 반영했어요";
       const bS=bF?`${lab(b1)} 장면은 “${cl(b1)}”${josa2(cl(b1),"이라고","라고")} 봐요`:"조심 신호도 함께 잡혔지만 꿈의 정황과 완전히 겹치진 않아 약하게만 반영했어요";
-      return `이번 꿈, 장면이 꽤 극적이었네요 — 좋은 신호와 조심 신호가 같이 잡혔어요. ${gS}. ${bS}.${extraLine(ex2)} 어느 한쪽이 뚜렷하게 세지 않아서 억지로 정하지 않았어요 — 좋은 흐름과 조심할 지점이 같이 있는 꿈이에요.${lean}`;
+      return `좋은 신호와 조심 신호가 같이 잡혔어요. ${gS}. ${bS}.${extraLine(ex2)}${traitLine}${lean}${psych}`
+        +(ask||" 어느 한쪽이 뚜렷하게 세지 않아서 억지로 정하지 않았어요 — 좋은 흐름과 조심할 지점이 같이 있는 꿈이에요.");
     }
     if(e.call==="중립")
       return "길흉을 가를 만한 사건보다 일상의 잔상에 가까운 꿈이었어요. 요즘의 하루가 꿈에 그대로 배어 나온 정도로 보면 충분해요.";
