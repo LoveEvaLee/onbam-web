@@ -271,6 +271,10 @@ textarea:focus{outline:1px solid var(--amber);outline-offset:-1px;border-color:t
 .synth-narr b{color:var(--amber)}
 .synth-p{margin:8px 0 0;font-size:13px;line-height:1.95;color:var(--silver)}
 .synth-p b{color:var(--vc,var(--amber))}
+.synth-h{margin:16px 0 0;font-size:11px;letter-spacing:.14em;font-weight:600;color:var(--amber)}
+.synth-h::after{content:"";display:block;width:28px;height:1px;background:var(--amber-line);margin-top:5px}
+.synth-note{font-size:11.5px;color:var(--silver2);line-height:1.8}
+.synth-close{color:var(--silver2)}
 /* 꿈 성좌 (구조 스켈레톤 — 디자인은 Pencil 이식 예정) */
 .ins-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .kg-btn{border:1px solid var(--hair2);background:transparent;color:var(--amber);border-radius:10px;
@@ -1722,61 +1726,62 @@ function finish(){
     else if(sf.outcome==="escaped")traits.push("스스로 벗어난 점");
     if(sf.control==="lost")traits.push("뜻대로 되지 않은 점");
     if(sf.emotion==="fear")traits.push("무서움이 짙게 남은 점");
-    const traitLine=traits.length?` 이번 꿈에서 도드라진 건 ${traits.slice(0,2).join("과 ")}이었어요.`:"";
-    const psych=(sf.control==="lost"||sf.outcome==="unresolved"||sf.outcome==="in_progress")
-      ?" 심리적으로는, 애쓰는 만큼 줄지 않는다고 느끼는 요즘 일이 꿈에 배어 나온 걸 수도 있어요."
-      :(sf.emotion==="fear"?" 심리적으로는, 요즘 마음을 누르던 긴장이 꿈으로 새어 나온 걸 수도 있어요.":"");
-    const ask=(sf.control==="lost"||sf.outcome==="unresolved")
-      ?" 요즘 손은 가는데 끝이 안 보이는 일이 있다면 — 방법을 바꿔보라는 신호 정도로 받아들이면 충분해요."
-      :"";
-    if(e.call==="길몽"){
-      const g1=pickQ(G,null),ex2=extraOf(new Set([g1&&g1.rule.concept]));
-      const gQ=g1&&g1.match>=1?`전통적으로 “${cl(g1)}”${josa2(cl(g1),"이라고","라고")} 봐요.`:"구체적인 읽기는 조건이 다 겹치지 않아 아껴둘게요.";
-      /* ⓓ(2026-11-11 승인): 반대편 '장면' 언급은 완전일치가 실제로 있을 때만 — 없던 장면을 있었던 것처럼 말하지 않는다 */
-      return `꿈의 중심에 있던 ${josa(lab(g1),"이","가")} 좋은 신호로 읽혔어요. ${gQ}`
-        +(B.some(x=>x.match>=1)?" 마음에 걸릴 만한 장면도 있었지만, 좋은 신호의 무게가 더 컸어요."
-          :(B.length?" 조심 쪽 신호도 살짝 스쳤지만 꿈의 정황과 겹침이 약해 접어뒀어요.":""))
-        +extraLine(ex2)+traitLine+psych
-        +" 오늘은 어깨 펴고 다녀도 되는 꿈이에요.";
-    }
-    if(e.call==="흉몽"){
-      const b1=pickQ(B,null),ex2=extraOf(new Set([b1&&b1.rule.concept]));
-      const bQ=b1&&b1.match>=1?`전통적으로 “${cl(b1)}”${josa2(cl(b1),"이라고","라고")} 봐요.`:"구체적인 읽기는 조건이 다 겹치지 않아 아껴둘게요.";
-      return `${josa(lab(b1),"이","가")} 조심하라는 신호로 읽혔어요. ${bQ}`
-        +(G.some(x=>x.match>=1)?" 좋게 읽히는 장면도 있었지만 무게는 조심 쪽이었어요."
-          :(G.length?" 좋은 쪽 신호도 살짝 스쳤지만 겹침이 약해 세게 반영하지 않았어요.":""))
-        +extraLine(ex2)+traitLine+psych
-        +(ask||" 나쁜 일이 정해졌다는 뜻은 아니에요 — 요즘 마음 쓰이던 일이 있다면 한 번 점검해 보라는 정도로 받아들이면 충분해요.");
-    }
-    if(e.call==="혼합"){
-      const lean=e.balance>0.15?" 굳이 저울을 보면 좋은 쪽이 조금 더 무거웠어요."
-        :e.balance<-0.15?" 굳이 저울을 보면 조심 쪽이 조금 더 무거웠어요.":"";
-      const g1=pickQ(G,null),b1=pickQ(B,g1&&g1.rule.concept);
-      /* 같은 상징 갈림 분기도 완전일치만 인용 — partial 우회로 쌩뚱 인용되던 경로 봉쇄 (imp-001, 2026-10-27) */
-      if(g1&&b1&&g1.rule.concept&&g1.rule.concept===b1.rule.concept){
-        if(g1.match>=1&&b1.match>=1)
-          return `이번 꿈의 ${lab(g1)} 장면을 두고 전통 자료의 읽기가 갈려요 — 좋게는 “${cl(g1)}”, 조심스럽게는 “${cl(b1)}”.${traitLine}${lean}${psych}${ask||" 좋은 흐름과 조심할 지점을 같이 품은 꿈으로 보면 돼요."}`;
-        const full=g1.match>=1?g1:(b1.match>=1?b1:null);
-        if(full){const dirw=full===g1?"좋은":"조심할";
-          return `이번 꿈의 ${lab(full)} 장면은 “${cl(full)}”${josa2(cl(full),"으로","로")} 읽혀요 — ${dirw} 신호 쪽이에요. 반대 방향 읽기도 있는 상징이지만 이번 전개와는 조건이 겹치지 않아 세게 반영하지 않았어요.${lean}`;}
-        return `이번 꿈의 ${lab(g1)} 장면은 전개에 따라 좋게도 조심스럽게도 읽히는 상징인데, 이번 서술로는 어느 쪽 조건도 다 확인되지 않아 한쪽으로 정하지 않았어요.${lean} 전개(어떻게 됐는지)를 조금 더 적어주시면 저울이 기울어요.`;
+    /* ③-2 섹션 구조(2026-11-12 유경 지시 "이런식으로 친절하게 나오는 구조면 좋겠어"):
+       한 문단 → 소제목 섹션 — 참고 전제 / 「전통 해몽으로 보면」 두 갈래 / 이 꿈의 특이점·저울 /
+       「심리적으로 보면」 / 질문 마무리. 재료는 그대로 매칭 근거·추출 facts뿐 — 내용은 만들지 않는다.
+       partial 인용 정책 갱신: '꿈의 장면' 단정 인용은 계속 금지(ⓓ), 다만 「전통 해몽으로 보면」 섹션은
+       상징 차원의 갈래 지식 제시이므로 partial도 "(이번 꿈의 전개와는 조건이 조금 달라요)" 표식과 함께 인용 허용. */
+    const NOTE="꿈해몽은 과학적으로 검증된 해석이 아니고, 전통 자료도 책과 풀이마다 읽기가 꽤 달라요. 아래는 전통 자료가 이 꿈을 읽어온 방향을 참고용으로 정리한 거예요.";
+    const q=x=>`“${cl(x)}”`;
+    const pN=(x,side)=>x&&x.match<1?` ${side} 갈래는 이번 꿈의 전개와 조건이 조금 달라서, 참고로만 두면 돼요.`:"";
+    const tradP=(g1,b1)=>{
+      if(g1&&b1){
+        const base=(g1.rule.concept&&g1.rule.concept===b1.rule.concept)
+          ?`${josa(lab(g1),"은","는")} 전통 자료에서 두 갈래로 풀이돼요. 좋게는 ${q(g1)}${josa2(cl(g1),"이라는","라는")} 읽기이고, 조심스럽게는 ${q(b1)}${josa2(cl(b1),"이라는","라는")} 읽기예요.`
+          :`전통 자료는 이번 꿈의 장면들을 두 갈래로 읽어요. 좋게는 ${lab(g1)} 쪽에서 ${q(g1)}, 조심스럽게는 ${lab(b1)} 쪽에서 ${q(b1)} 하는 식이에요.`;
+        return base+pN(g1,"좋은 쪽")+pN(b1,"조심 쪽");
       }
+      const s=g1||b1; if(!s)return"";
+      return `전통 자료는 ${lab(s)} 장면을 ${q(s)}${josa2(cl(s),"으로","로")} 읽어요.`+pN(s,s===g1?"이":"이");
+    };
+    const traitP=()=>{
+      const t=traits.length?`이번 꿈은 ${traits.slice(0,2).join("과 ")}이 눈에 띄어요.`:"";
+      const leanS=e.call==="길몽"?" 이런 흐름이면 전통 자료는 좋은 쪽 읽기에 무게를 둬요."
+        :e.call==="흉몽"?" 이런 흐름이면 전통 자료는 대체로 조심 쪽 읽기에 무게를 둬요."
+        :(e.balance>0.15?" 이번 서술로는 좋은 쪽이 조금 더 무거웠어요."
+          :e.balance<-0.15?" 이번 서술로는 조심 쪽이 조금 더 무거웠어요."
+          :" 이번 서술로는 어느 갈래가 세다고 정하기 어려워서, 양쪽을 같이 둔 꿈으로 봤어요.");
+      /* ⓓ 유지: 반대편 '장면' 언급은 완전일치가 실제로 있을 때만 — 아니면 '신호'로만 */
+      let c="";
+      if(e.call==="길몽"&&B.length)c=B.some(x=>x.match>=1)?" 마음에 걸릴 만한 장면도 있었지만, 좋은 신호의 무게가 더 컸어요.":" 조심 쪽 신호도 살짝 스쳤지만 겹침이 약해 접어뒀어요.";
+      if(e.call==="흉몽"&&G.length)c=G.some(x=>x.match>=1)?" 좋게 읽히는 장면도 있었지만 무게는 조심 쪽이었어요.":" 좋은 쪽 신호도 살짝 스쳤지만 겹침이 약해 세게 반영하지 않았어요.";
+      return (t+leanS+c).trim();
+    };
+    const psychP=(sf.outcome==="unresolved"||sf.outcome==="in_progress"||sf.control==="lost")
+      ?"꿈에서 애를 써도 상황이 정리되지 않는 전개는, 현실에서 느끼는 ‘애쓰는 만큼 줄지 않는다’는 답답함과 자주 연결돼요. 하나를 끝내면 또 새로 생기는 일이 동시에 돌아가고 있거나, 지금 쓰는 방법이 잘 안 먹힌다고 느낄 때 이런 꿈을 꾸기 쉬워요."
+      :sf.emotion==="fear"?"무서움이 짙게 남는 꿈은 실제 위험의 예고라기보다, 요즘 마음을 누르던 긴장이 수면 중에 풀려 나오는 경우가 많아요."
+      :sf.outcome==="resolved"?"꿈 안에서 매듭이 지어지는 전개는, 현실의 어떤 일을 스스로 정리해 가고 있다는 감각과 연결되곤 해요."
+      :sf.outcome==="escaped"?"꿈에서 스스로 벗어나는 전개는, 부담스럽던 상황과 거리를 두고 싶다는 마음이 드러난 것으로 보는 경우가 많아요."
+      :"";
+    const closeP=(sf.control==="lost"||sf.outcome==="unresolved"||sf.outcome==="in_progress")
+      ?"요즘 계속 손이 가는데도 끝이 안 보이는 일이 있으세요? 꿈은 ‘방법을 바꿔봐’, ‘잠깐 숨 좀 돌려’ 정도의 신호로 받아들이면 충분해요."
+      :e.call==="길몽"?"오늘은 어깨 펴고 다녀도 되는 꿈이에요."
+      :e.call==="흉몽"?"나쁜 일이 정해졌다는 뜻은 아니에요 — 요즘 마음 쓰이던 일이 있다면 한 번 점검해 보라는 정도로 받아들이면 충분해요."
+      :"좋은 흐름과 조심할 지점을 같이 품은 꿈으로 보면 돼요.";
+    if(e.call==="길몽"||e.call==="흉몽"||e.call==="혼합"){
+      const g1=pickQ(G,null),b1=pickQ(B,g1&&g1.rule.concept);
       const ex2=extraOf(new Set([g1&&g1.rule.concept,b1&&b1.rule.concept]));
-      /* partial 근거는 인용하지 않는다 — 안 겪은 전개("가족을 잃어버리고…")가 단정 인용되던 문제 (2026-10-10) */
-      const gF=g1&&g1.match>=1,bF=b1&&b1.match>=1;
-      /* ③ 두 갈래 프레임: 양쪽 다 완전일치면 '전통이 두 갈래로 읽는다'로 묶어 제시 — 나열이 아니라 갈래 구도 */
-      if(gF&&bF)
-        return `전통 해몽에서 이번 꿈의 장면들은 두 갈래로 읽혀요 — 좋게는 ${lab(g1)} 쪽에서 “${cl(g1)}”, 조심스럽게는 ${lab(b1)} 쪽에서 “${cl(b1)}”.`
-          +traitLine+lean+psych+extraLine(ex2)
-          +(ask||" 좋은 흐름과 조심할 지점을 같이 품은 꿈으로 보면 돼요.");
-      const gS=gF?`${lab(g1)} 장면은 “${cl(g1)}”${josa2(cl(g1),"으로","로")} 읽혀요`:"좋은 신호도 잡혔지만 꿈의 정황과 완전히 겹치진 않아 약하게만 반영했어요";
-      const bS=bF?`${lab(b1)} 장면은 “${cl(b1)}”${josa2(cl(b1),"이라고","라고")} 봐요`:"조심 신호도 함께 잡혔지만 꿈의 정황과 완전히 겹치진 않아 약하게만 반영했어요";
-      return `좋은 신호와 조심 신호가 같이 잡혔어요. ${gS}. ${bS}.${extraLine(ex2)}${traitLine}${lean}${psych}`
-        +(ask||" 어느 한쪽이 뚜렷하게 세지 않아서 억지로 정하지 않았어요 — 좋은 흐름과 조심할 지점이 같이 있는 꿈이에요.");
+      const secs=[{p:NOTE,cls:"note"}];
+      const tp=tradP(g1,b1);
+      if(tp)secs.push({h:"전통 해몽으로 보면",p:tp+extraLine(ex2)});
+      const tr=traitP(); if(tr)secs.push({p:tr});
+      if(psychP)secs.push({h:"심리적으로 보면",p:psychP});
+      secs.push({p:closeP,cls:"close"});
+      return secs;
     }
     if(e.call==="중립")
-      return "길흉을 가를 만한 사건보다 일상의 잔상에 가까운 꿈이었어요. 요즘의 하루가 꿈에 그대로 배어 나온 정도로 보면 충분해요.";
-    return ""; // 판정유보 — 바로 아래 '왜 판정을 유보했나요' 패널이 이 역할을 함
+      return [{p:"길흉을 가를 만한 사건보다 일상의 잔상에 가까운 꿈이었어요. 요즘의 하루가 꿈에 그대로 배어 나온 정도로 보면 충분해요."}];
+    return null; // 판정유보 — 바로 아래 '왜 판정을 유보했나요' 패널이 이 역할을 함
   })();
   const g=cur.ex.goal;
   const narrLine=g?`<p class="synth-narr">이 꿈의 목표는 <b>‘${esc(g.서술)}’</b>${g.status==="달성"?" — 꿈 안에서 이뤄졌어요.":g.status==="진행중"?"였어요. 꿈은 그 길 위에서 끝났고 — 도착 장면은 아직이에요. 아래 판정은 완주가 아니라 여정의 장면들로만 계산했어요.":g.status==="좌절"?"였지만 꿈 안에서는 막혔어요.":"였어요."}</p>`:"";
@@ -1817,7 +1822,7 @@ function finish(){
     return lines?`<div class="panel synth"><div class="panel-h">${ICON("list")}<span class="sec">장면별 읽기</span></div>${lines}</div>`:"";
   })();
   const synthPanel=(synthText||narrLine)?`<div class="panel synth"><div class="panel-h">${ICON("book")}<span class="sec">그래서, 이 꿈은</span></div>
-    ${narrLine}${synthText?`<p class="synth-p">${synthText}</p>`:""}</div>`:"";
+    ${narrLine}${Array.isArray(synthText)?synthText.map(s=>(s.h?`<div class="synth-h">${s.h}</div>`:"")+`<p class="synth-p${s.cls?" synth-"+s.cls:""}">${s.p}</p>`).join(""):(synthText?`<p class="synth-p">${synthText}</p>`:"")}</div>`:"";
   const approxPanel=isHold?`<div class="panel approx" id="approx-slot">
       <div class="panel-h">${ICON("info")}<span class="sec">왜 판정을 유보했나요</span></div>
       <div id="approx-out">${MODE==="full"
